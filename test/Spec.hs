@@ -1,7 +1,14 @@
-import ProcessarMovimento (processarMovimento)
-import Tabuleiro
+{-
+Ainda nao foi possivel configurar nenhum teste utilizando quickcheck
+Implementamos estes testes basicos para testar o funcionamento
+Alem disso, por algum motivo nao conseguimos trocar o nome do arquivo
+Todas as vezes que tentamos trocar o nome do arquivo o stack run reclamava
+-}
 
--- Função para configurar o tabuleiro para o roque pequeno
+import ProcessarMovimento (processarMovimento)
+import Tabuleiro (Cor (Branca), Tabuleiro, mostrarTabuleiro)
+
+-- Funcao para configurar o tabuleiro para o roque pequeno
 configurarTabuleiroParaRoquePequeno :: Tabuleiro
 configurarTabuleiroParaRoquePequeno =
   [ "rnbqkbnr",
@@ -14,7 +21,7 @@ configurarTabuleiroParaRoquePequeno =
     "R   K  R"
   ]
 
--- Função para configurar o tabuleiro para o roque grande
+-- Funcao para configurar o tabuleiro para o roque grande
 configurarTabuleiroParaRoqueGrande :: Tabuleiro
 configurarTabuleiroParaRoqueGrande =
   [ "rnbqkbnr",
@@ -27,7 +34,7 @@ configurarTabuleiroParaRoqueGrande =
     "R   K  R"
   ]
 
--- Função de teste para verificar o roque pequeno
+-- Funcao de teste para verificar o roque pequeno
 testarRoquePequeno :: IO ()
 testarRoquePequeno = do
   let tabuleiro = configurarTabuleiroParaRoquePequeno
@@ -39,11 +46,11 @@ testarRoquePequeno = do
 
   case resultado of
     Just novoTabuleiro -> do
-      putStrLn "Tabuleiro após o roque pequeno:"
+      putStrLn "Tabuleiro apos o roque pequeno:"
       mostrarTabuleiro novoTabuleiro
-    Nothing -> putStrLn "Movimento de roque pequeno inválido!"
+    Nothing -> putStrLn "Movimento de roque pequeno invalido!"
 
--- Função de teste para verificar o roque grande
+-- Funcao de teste para verificar o roque grande
 testarRoqueGrande :: IO ()
 testarRoqueGrande = do
   let tabuleiro = configurarTabuleiroParaRoqueGrande
@@ -55,9 +62,9 @@ testarRoqueGrande = do
 
   case resultado of
     Just novoTabuleiro -> do
-      putStrLn "Tabuleiro após o roque grande:"
+      putStrLn "Tabuleiro apos o roque grande:"
       mostrarTabuleiro novoTabuleiro
-    Nothing -> putStrLn "Movimento de roque grande inválido!"
+    Nothing -> putStrLn "Movimento de roque grande invalido!"
 
 main :: IO ()
 main = do

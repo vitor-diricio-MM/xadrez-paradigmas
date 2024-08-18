@@ -1,28 +1,29 @@
-module Utils (
-    colunaParaIndice,
+module Utils
+  ( colunaParaIndice,
     linhaParaIndice,
     pecaNaPosicao',
     charToPeca,
-    corPeca
-) where
+    corPeca,
+  )
+where
 
-import Tabuleiro (Tabuleiro, Posicao, Peca(..), Cor(..), pecaNaPosicao)
+import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro)
 
--- Funções de Conversão de Coordenadas
+-- Funcoes de Conversao de Coordenadas
 colunaParaIndice :: Char -> Int
 colunaParaIndice col = fromEnum col - fromEnum 'a'
 
 linhaParaIndice :: Char -> Int
 linhaParaIndice linha = 8 - (read [linha] :: Int)
 
--- Função para Obter Peça na Posição
+-- Funcao para Obter Peca na Posicao
 pecaNaPosicao' :: Posicao -> Tabuleiro -> Maybe Peca
 pecaNaPosicao' (col, lin) tab =
-    let linha = tab !! lin
-        pecaChar = linha !! col
-    in if pecaChar == ' ' then Nothing else Just (charToPeca pecaChar)
+  let linha = tab !! lin
+      pecaChar = linha !! col
+   in if pecaChar == ' ' then Nothing else Just (charToPeca pecaChar)
 
--- Função para converter Char para Peca
+-- Funcao para converter Char para Peca
 charToPeca :: Char -> Peca
 charToPeca 'R' = Torre Branca
 charToPeca 'N' = Cavalo Branca
@@ -38,7 +39,7 @@ charToPeca 'k' = Rei Preta
 charToPeca 'p' = Peao Preta
 charToPeca _ = error "Caracter desconhecido"
 
--- Função para obter a cor de uma peça
+-- Funcao para obter a cor de uma peca
 corPeca :: Peca -> Cor
 corPeca (Rei cor) = cor
 corPeca (Rainha cor) = cor

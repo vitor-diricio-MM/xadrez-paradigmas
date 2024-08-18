@@ -1,4 +1,4 @@
-# Projeto Xadrez | Programação funcional ![Haskell](https://img.shields.io/badge/Haskell-5e5086?style=for-the-badge&logo=haskell&logoColor=white)
+# Projeto Xadrez | Programacao funcional ![Haskell](https://img.shields.io/badge/Haskell-5e5086?style=for-the-badge&logo=haskell&logoColor=white)
 
 <p align="center">
 <img src="https://i.ibb.co/0DkWq1G/Ufabc-logo.png" width="100" height="100" alt="Logo UFABC">
@@ -12,17 +12,23 @@ Participantes:
 
 ## Planejamento de entregas
 
-- Primeira entrega: Idealmente planejamos entregar um jogo de xadrez com interação feita através do terminal parcialmente funcional. Até o momento da primeira entrega, acreditamos que ainda existirão bugs e correções necessárias.
+- Primeira entrega: Jogo de Xadrez 100% funcional, com testes nao otimizados e ainda sem utilizar quickcheck
 
-- Segunda entrega: Jogo de xadrez 100% funcional e opcionalmente com uma GUI, caso haja tempo ábil
+- Segunda entrega: Jogo de xadrez 100% funcional com testes aprimorados e com GUI
 
-## Instalação e usabilidade
+## Instalacao e usabilidade
 
-Para rodar o código, basta clonar o repositório e rodar
+Para rodar o codigo, basta clonar o repositorio e rodar
 
-bash
+```bash
 stack run
+```
 
+Ou para reduzir a quantidade de logs
+
+```bash
+stack run --silent
+```
 
 ## License
 
