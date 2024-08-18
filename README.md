@@ -30,6 +30,12 @@ Ou para reduzir a quantidade de logs
 stack run --silent
 ```
 
+## Como jogar
+
+1. Insira movimentos no formato "casaInicialCasaFinal" (ex: "e2e4").
+
+2. Digite "sair" para encerrar o jogo ou jogue até o final da partida.
+
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
