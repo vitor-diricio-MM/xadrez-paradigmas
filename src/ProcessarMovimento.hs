@@ -11,20 +11,18 @@ import ValidacaoMovimento (movimentoValido, roqueValido)
 
 -- Funcao para Processar Movimento
 processarMovimento :: String -> Tabuleiro -> Cor -> Maybe Tabuleiro
-processarMovimento [c1, r1, c2, r2] tab corAtual =
+processarMovimento [c1, r1, c2, r2] tab corAtual = do
   let inicio = (colunaParaIndice c1, linhaParaIndice r1)
       fim = (colunaParaIndice c2, linhaParaIndice r2)
       peca = pecaNaPosicao' inicio tab
-   in case peca of
-        Just p ->
-          if corPeca p == corAtual && movimentoValido tab p inicio fim
-            then
-              let novoTabuleiro = if roqueValido tab p inicio fim then executarRoque inicio fim tab else moverPeca inicio fim tab
-               in if not (verificarXeque novoTabuleiro corAtual)
-                    then Just novoTabuleiro
-                    else Nothing
+  p <- peca
+  if corPeca p == corAtual && movimentoValido tab p inicio fim
+    then
+      let novoTabuleiro = if roqueValido tab p inicio fim then executarRoque inicio fim tab else moverPeca inicio fim tab
+       in if not (verificarXeque novoTabuleiro corAtual)
+            then Just novoTabuleiro
             else Nothing
-        Nothing -> Nothing
+    else Nothing
 processarMovimento _ _ _ = Nothing
 
 moverPeca :: Posicao -> Posicao -> Tabuleiro -> Tabuleiro
