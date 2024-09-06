@@ -1,10 +1,10 @@
-module Utils
-  ( colunaParaIndice,
+module Utils (
+    colunaParaIndice,
     linhaParaIndice,
     pecaNaPosicao',
     charToPeca,
     corPeca,
-  )
+)
 where
 
 import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro)
@@ -19,9 +19,9 @@ linhaParaIndice linha = 8 - (read [linha] :: Int)
 -- Funcao para Obter Peca na Posicao
 pecaNaPosicao' :: Posicao -> Tabuleiro -> Maybe Peca
 pecaNaPosicao' (col, lin) tab =
-  let linha = tab !! lin
-      pecaChar = linha !! col
-   in if pecaChar == ' ' then Nothing else Just (charToPeca pecaChar)
+    let linha = tab !! lin
+        pecaChar = linha !! col
+     in if pecaChar == ' ' then Nothing else Just (charToPeca pecaChar)
 
 -- Funcao para converter Char para Peca
 charToPeca :: Char -> Peca
@@ -37,6 +37,7 @@ charToPeca 'b' = Bispo Preta
 charToPeca 'q' = Rainha Preta
 charToPeca 'k' = Rei Preta
 charToPeca 'p' = Peao Preta
+charToPeca ' ' = error "Espaço vazio não deve ser convertido para peça"
 charToPeca _ = error "Caracter desconhecido"
 
 -- Funcao para obter a cor de uma peca

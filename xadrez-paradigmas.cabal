@@ -1,9 +1,5 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
---
--- see: https://github.com/sol/hpack
-
 name:           xadrez-paradigmas
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/xadrez-paradigmas#readme>
@@ -27,6 +23,7 @@ library
   exposed-modules:
       Check
       CheckMate
+      Gui
       ProcessarMovimento
       Tabuleiro
       Utils
@@ -40,6 +37,8 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , gloss
+    , gloss-juicy
   default-language: Haskell2010
 
 executable xadrez-paradigmas-exe
@@ -53,6 +52,8 @@ executable xadrez-paradigmas-exe
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , gloss
+    , gloss-juicy
     , xadrez-paradigmas
   default-language: Haskell2010
 
@@ -68,5 +69,7 @@ test-suite xadrez-paradigmas-test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , gloss
+    , gloss-juicy
     , xadrez-paradigmas
   default-language: Haskell2010
