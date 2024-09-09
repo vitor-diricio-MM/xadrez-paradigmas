@@ -51,7 +51,7 @@ carregarImagem caminho = do
 -- Função para desenhar o caractere da peça
 desenharPecaChar :: [(Peca, Picture)] -> Peca -> Picture
 desenharPecaChar imagens peca =
-    let squareSize = 75
+    let squareSize = 76
         scaleFactor = (squareSize * 0.6) / 512 -- Reduced from 0.8 to 0.6
         originalPicture = fromMaybe Blank (lookup peca imagens)
      in Scale scaleFactor scaleFactor originalPicture
@@ -80,11 +80,11 @@ desenharLinha imagens (y, linha) = map (desenharPeca imagens y) (zip [0 ..] linh
 -- Função para desenhar uma peça
 desenharPeca :: [(Peca, Picture)] -> Int -> (Int, Char) -> Picture
 desenharPeca imagens y (x, pecaChar) =
-    let squareSize = 75
+    let squareSize = 76
         boardOffsetX = 250 -- Adjusted to move board left
         boardOffsetY = 250 -- Adjusted to move board down
-        pieceOffsetX = 10 -- Move pieces left within squares
-        pieceOffsetY = 10 -- Move pieces down within squares
+        pieceOffsetX = 35 -- Move pieces left within squares
+        pieceOffsetY = 35 -- Move pieces down within squares
         cor = if even (x + y) then makeColor 0.47 0.58 0.34 1.0 else makeColor 0.92 0.93 0.82 1.0
         pecaPicture =
             if pecaChar == ' '
