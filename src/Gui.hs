@@ -8,6 +8,7 @@ import Graphics.Gloss.Juicy (loadJuicy)
 import ProcessarMovimento (processarMovimento)
 import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao, tabuleiroInicial)
 import Utils (charToPeca, corPeca)
+import ValidacaoMovimento (movimentoValido)
 
 type EstadoJogo = (Tabuleiro, Cor, Maybe Posicao)
 
@@ -68,27 +69,38 @@ iniciarJogo = do
         atualizarEstado
 
 desenharEstado :: [(Peca, Picture)] -> EstadoJogo -> Picture
-desenharEstado imagens (tab, _, _) =
-    Pictures $ concatMap (desenharLinha imagens) (zip [0 ..] tab)
+desenharEstado imagens (tab, cor, maybePos) =
+    Pictures $ concatMap (desenharLinha imagens maybePos tab cor) (zip [0 ..] tab)
 
-desenharLinha :: [(Peca, Picture)] -> (Int, [Char]) -> [Picture]
-desenharLinha imagens (y, linha) = map (desenharPeca imagens y) (zip [0 ..] linha)
+desenharLinha :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> Cor -> (Int, [Char]) -> [Picture]
+desenharLinha imagens maybePos tab cor (y, linha) = map (desenharPeca imagens maybePos tab cor y) (zip [0 ..] linha)
 
-desenharPeca :: [(Peca, Picture)] -> Int -> (Int, Char) -> Picture
-desenharPeca imagens y (x, pecaChar) =
+desenharPeca :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> Cor -> Int -> (Int, Char) -> Picture
+desenharPeca imagens maybePos tab cor y (x, pecaChar) =
     let squareSize = 76
         boardOffsetX = 250
         boardOffsetY = 250
         pieceOffsetX = 35
         pieceOffsetY = 35
-        cor = if even (x + y) then makeColor 0.47 0.58 0.34 1.0 else makeColor 0.92 0.93 0.82 1.0
+        pos = (x, y)
+        corCasa = if even (x + y) then makeColor 0.47 0.58 0.34 1.0 else makeColor 0.92 0.93 0.82 1.0
         pecaPicture =
             if pecaChar == ' '
                 then Blank
                 else desenharPecaChar imagens (charToPeca pecaChar)
+        highlight = case maybePos of
+            Just origem ->
+                if origem == pos
+                    then Color (makeColor 1 0 0 0.5) (rectangleSolid squareSize squareSize)
+                    else
+                        if movimentoValido tab (charToPeca (fst (pecaNaPosicao origem tab))) origem pos
+                            then Color (makeColor 0 0 1 0.3) (rectangleSolid squareSize squareSize)
+                            else Blank
+            Nothing -> Blank
      in Translate (fromIntegral x * squareSize - boardOffsetX) (fromIntegral (7 - y) * squareSize - boardOffsetY) $
             Pictures
-                [ Color cor (rectangleSolid squareSize squareSize)
+                [ Color corCasa (rectangleSolid squareSize squareSize)
+                , highlight
                 , Translate (squareSize / 2 - pieceOffsetX) (squareSize / 2 - pieceOffsetY) pecaPicture
                 ]
 
