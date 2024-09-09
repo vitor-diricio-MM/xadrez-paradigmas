@@ -5,14 +5,15 @@ import Graphics.Gloss
 import Graphics.Gloss.Data.Color ()
 import Graphics.Gloss.Interface.Pure.Game
 import Graphics.Gloss.Juicy (loadJuicy)
-import Tabuleiro (Cor (..), Peca (..), Tabuleiro, tabuleiroInicial)
-import Utils (charToPeca)
+import ProcessarMovimento (processarMovimento)
+import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao, tabuleiroInicial)
+import Utils (charToPeca, corPeca)
 
--- Define o estado inicial do jogo
-estadoInicial :: (Tabuleiro, Cor)
-estadoInicial = (tabuleiroInicial, Branca)
+type EstadoJogo = (Tabuleiro, Cor, Maybe Posicao)
 
--- Função para carregar imagens das peças
+estadoInicial :: EstadoJogo
+estadoInicial = (tabuleiroInicial, Branca, Nothing)
+
 carregarImagens :: IO [(Peca, Picture)]
 carregarImagens = do
     reiBranco <- carregarImagem "imagens/rei_branco.png"
@@ -42,21 +43,18 @@ carregarImagens = do
         , (Peao Preta, peaoPreto)
         ]
 
--- Função auxiliar para carregar uma imagem
 carregarImagem :: FilePath -> IO Picture
 carregarImagem caminho = do
     maybeImg <- loadJuicy caminho
     return $ fromMaybe (error $ "Erro ao carregar imagem: " ++ caminho) maybeImg
 
--- Função para desenhar o caractere da peça
 desenharPecaChar :: [(Peca, Picture)] -> Peca -> Picture
 desenharPecaChar imagens peca =
     let squareSize = 76
-        scaleFactor = (squareSize * 0.6) / 512 -- Reduced from 0.8 to 0.6
+        scaleFactor = (squareSize * 0.6) / 512
         originalPicture = fromMaybe Blank (lookup peca imagens)
      in Scale scaleFactor scaleFactor originalPicture
 
--- Função para iniciar o jogo
 iniciarJogo :: IO ()
 iniciarJogo = do
     imagens <- carregarImagens
@@ -69,22 +67,20 @@ iniciarJogo = do
         tratarEvento
         atualizarEstado
 
--- Função para desenhar o estado do jogo
-desenharEstado :: [(Peca, Picture)] -> (Tabuleiro, Cor) -> Picture
-desenharEstado imagens (tab, _) = Pictures $ concatMap (desenharLinha imagens) (zip [0 ..] tab)
+desenharEstado :: [(Peca, Picture)] -> EstadoJogo -> Picture
+desenharEstado imagens (tab, _, _) =
+    Pictures $ concatMap (desenharLinha imagens) (zip [0 ..] tab)
 
--- Função para desenhar uma linha do tabuleiro
 desenharLinha :: [(Peca, Picture)] -> (Int, [Char]) -> [Picture]
 desenharLinha imagens (y, linha) = map (desenharPeca imagens y) (zip [0 ..] linha)
 
--- Função para desenhar uma peça
 desenharPeca :: [(Peca, Picture)] -> Int -> (Int, Char) -> Picture
 desenharPeca imagens y (x, pecaChar) =
     let squareSize = 76
-        boardOffsetX = 250 -- Adjusted to move board left
-        boardOffsetY = 250 -- Adjusted to move board down
-        pieceOffsetX = 35 -- Move pieces left within squares
-        pieceOffsetY = 35 -- Move pieces down within squares
+        boardOffsetX = 250
+        boardOffsetY = 250
+        pieceOffsetX = 35
+        pieceOffsetY = 35
         cor = if even (x + y) then makeColor 0.47 0.58 0.34 1.0 else makeColor 0.92 0.93 0.82 1.0
         pecaPicture =
             if pecaChar == ' '
@@ -96,10 +92,37 @@ desenharPeca imagens y (x, pecaChar) =
                 , Translate (squareSize / 2 - pieceOffsetX) (squareSize / 2 - pieceOffsetY) pecaPicture
                 ]
 
--- Função para tratar eventos (a ser implementada)
-tratarEvento :: Event -> (Tabuleiro, Cor) -> (Tabuleiro, Cor)
+tratarEvento :: Event -> EstadoJogo -> EstadoJogo
+tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Nothing) =
+    let pos = mouseParaPosicao mousePos
+        (pecaChar, _) = pecaNaPosicao pos tab
+        peca = if pecaChar /= ' ' then Just (charToPeca pecaChar) else Nothing
+     in case peca of
+            Just p -> if corPeca p == cor then (tab, cor, Just pos) else (tab, cor, Nothing)
+            Nothing -> (tab, cor, Nothing)
+tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Just origem) =
+    let destino = mouseParaPosicao mousePos
+        novoTabuleiro = processarMovimento (posicaoParaString origem destino) tab cor
+     in case novoTabuleiro of
+            Just tabAtualizado -> (tabAtualizado, alternarCor cor, Nothing)
+            Nothing -> (tab, cor, Nothing)
 tratarEvento _ estado = estado
 
--- Função para atualizar o estado do jogo (a ser implementada)
-atualizarEstado :: Float -> (Tabuleiro, Cor) -> (Tabuleiro, Cor)
+atualizarEstado :: Float -> EstadoJogo -> EstadoJogo
 atualizarEstado _ estado = estado
+
+mouseParaPosicao :: (Float, Float) -> Posicao
+mouseParaPosicao (x, y) = (floor ((x + 300) / 75), 7 - floor ((y + 300) / 75))
+
+posicaoParaString :: Posicao -> Posicao -> String
+posicaoParaString (x1, y1) (x2, y2) = [indiceParaColuna x1, indiceParaLinha y1, indiceParaColuna x2, indiceParaLinha y2]
+
+indiceParaColuna :: Int -> Char
+indiceParaColuna i = toEnum (i + fromEnum 'a')
+
+indiceParaLinha :: Int -> Char
+indiceParaLinha i = toEnum (8 - i + fromEnum '0')
+
+alternarCor :: Cor -> Cor
+alternarCor Branca = Preta
+alternarCor Preta = Branca
