@@ -1,6 +1,6 @@
 module Gui (iniciarJogo) where
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Graphics.Gloss
 import Graphics.Gloss.Data.Color ()
 import Graphics.Gloss.Interface.Pure.Game
@@ -10,10 +10,10 @@ import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao, tabule
 import Utils (charToPeca, corPeca)
 import ValidacaoMovimento (movimentoValido)
 
-type EstadoJogo = (Tabuleiro, Cor, Maybe Posicao)
+type EstadoJogo = (Tabuleiro, Cor, Maybe Posicao, [Peca], [Peca])
 
 estadoInicial :: EstadoJogo
-estadoInicial = (tabuleiroInicial, Branca, Nothing)
+estadoInicial = (tabuleiroInicial, Branca, Nothing, [], [])
 
 carregarImagens :: IO [(Peca, Picture)]
 carregarImagens = do
@@ -60,7 +60,7 @@ iniciarJogo :: IO ()
 iniciarJogo = do
     imagens <- carregarImagens
     play
-        (InWindow "Jogo de Xadrez" (600, 600) (10, 10))
+        (InWindow "Jogo de Xadrez" (800, 600) (10, 10))
         white
         30
         estadoInicial
@@ -69,8 +69,10 @@ iniciarJogo = do
         atualizarEstado
 
 desenharEstado :: [(Peca, Picture)] -> EstadoJogo -> Picture
-desenharEstado imagens (tab, cor, maybePos) =
-    Pictures $ concatMap (desenharLinha imagens maybePos tab cor) (zip [0 ..] tab)
+desenharEstado imagens (tab, cor, maybePos, capturadasBrancas, capturadasPretas) =
+    Pictures $
+        concatMap (desenharLinha imagens maybePos tab cor) (zip [0 ..] tab)
+            ++ desenharCapturadas imagens capturadasBrancas capturadasPretas
 
 desenharLinha :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> Cor -> (Int, [Char]) -> [Picture]
 desenharLinha imagens maybePos tab cor (y, linha) = map (desenharPeca imagens maybePos tab cor y) (zip [0 ..] linha)
@@ -104,27 +106,56 @@ desenharPeca imagens maybePos tab cor y (x, pecaChar) =
                 , Translate (squareSize / 2 - pieceOffsetX) (squareSize / 2 - pieceOffsetY) pecaPicture
                 ]
 
+desenharCapturadas :: [(Peca, Picture)] -> [Peca] -> [Peca] -> [Picture]
+desenharCapturadas imagens capturadasBrancas capturadasPretas =
+    let squareSize = 76
+        offsetXBrancas = -350
+        offsetXPretas = 350
+        offsetY = 250
+     in [ Translate (offsetXBrancas) (fromIntegral i * (-squareSize) + offsetY) $
+            desenharPecaChar imagens peca
+        | (i, peca) <- zip [0 ..] capturadasBrancas
+        ]
+            ++ [ Translate (offsetXPretas) (fromIntegral i * (-squareSize) + offsetY) $
+                desenharPecaChar imagens peca
+               | (i, peca) <- zip [0 ..] capturadasPretas
+               ]
+
 tratarEvento :: Event -> EstadoJogo -> EstadoJogo
-tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Nothing) =
-    let pos = mouseParaPosicao mousePos
-        (pecaChar, _) = pecaNaPosicao pos tab
-        peca = if pecaChar /= ' ' then Just (charToPeca pecaChar) else Nothing
-     in case peca of
-            Just p -> if corPeca p == cor then (tab, cor, Just pos) else (tab, cor, Nothing)
-            Nothing -> (tab, cor, Nothing)
-tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Just origem) =
-    let destino = mouseParaPosicao mousePos
-        novoTabuleiro = processarMovimento (posicaoParaString origem destino) tab cor
-     in case novoTabuleiro of
-            Just tabAtualizado -> (tabAtualizado, alternarCor cor, Nothing)
-            Nothing -> (tab, cor, Nothing)
+tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Nothing, capturadasBrancas, capturadasPretas) =
+    case mouseParaPosicao mousePos of
+        Just pos ->
+            let (pecaChar, _) = pecaNaPosicao pos tab
+                peca = if pecaChar /= ' ' then Just (charToPeca pecaChar) else Nothing
+             in case peca of
+                    Just p -> if corPeca p == cor then (tab, cor, Just pos, capturadasBrancas, capturadasPretas) else (tab, cor, Nothing, capturadasBrancas, capturadasPretas)
+                    Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas)
+        Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas)
+tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Just origem, capturadasBrancas, capturadasPretas) =
+    case mouseParaPosicao mousePos of
+        Just destino ->
+            let (pecaDestinoChar, _) = pecaNaPosicao destino tab
+                pecaCapturada = if pecaDestinoChar /= ' ' then Just (charToPeca pecaDestinoChar) else Nothing
+                novoTabuleiro = processarMovimento (posicaoParaString origem destino) tab cor
+             in case novoTabuleiro of
+                    Just tabAtualizado ->
+                        let (novasBrancas, novasPretas) = case pecaCapturada of
+                                Just p -> if corPeca p == Branca then (p : capturadasBrancas, capturadasPretas) else (capturadasBrancas, p : capturadasPretas)
+                                Nothing -> (capturadasBrancas, capturadasPretas)
+                         in (tabAtualizado, alternarCor cor, Nothing, novasBrancas, novasPretas)
+                    Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas)
+        Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas)
 tratarEvento _ estado = estado
 
 atualizarEstado :: Float -> EstadoJogo -> EstadoJogo
 atualizarEstado _ estado = estado
 
-mouseParaPosicao :: (Float, Float) -> Posicao
-mouseParaPosicao (x, y) = (floor ((x + 300) / 75), 7 - floor ((y + 300) / 75))
+mouseParaPosicao :: (Float, Float) -> Maybe Posicao
+mouseParaPosicao (x, y) =
+    let pos = (floor ((x + 300) / 75), 7 - floor ((y + 300) / 75))
+     in if x >= -300 && x <= 300 && y >= -300 && y <= 300
+            then Just pos
+            else Nothing
 
 posicaoParaString :: Posicao -> Posicao -> String
 posicaoParaString (x1, y1) (x2, y2) = [indiceParaColuna x1, indiceParaLinha y1, indiceParaColuna x2, indiceParaLinha y2]
