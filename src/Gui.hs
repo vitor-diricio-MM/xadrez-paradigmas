@@ -2,16 +2,11 @@ module Gui (iniciarJogo) where
 
 import Data.Maybe (fromMaybe)
 import Graphics.Gloss
+import Graphics.Gloss.Data.Color ()
 import Graphics.Gloss.Interface.Pure.Game
 import Graphics.Gloss.Juicy (loadJuicy)
 import Tabuleiro (Cor (..), Peca (..), Tabuleiro, tabuleiroInicial)
 import Utils (charToPeca)
-
--- Define o tamanho da janela e do tabuleiro
-larguraJanela, alturaJanela, offset :: Int
-larguraJanela = 600
-alturaJanela = 600
-offset = 100
 
 -- Define o estado inicial do jogo
 estadoInicial :: (Tabuleiro, Cor)
@@ -55,14 +50,18 @@ carregarImagem caminho = do
 
 -- Função para desenhar o caractere da peça
 desenharPecaChar :: [(Peca, Picture)] -> Peca -> Picture
-desenharPecaChar imagens peca = fromMaybe Blank (lookup peca imagens)
+desenharPecaChar imagens peca =
+    let squareSize = 75
+        scaleFactor = (squareSize * 0.6) / 512 -- Reduced from 0.8 to 0.6
+        originalPicture = fromMaybe Blank (lookup peca imagens)
+     in Scale scaleFactor scaleFactor originalPicture
 
 -- Função para iniciar o jogo
 iniciarJogo :: IO ()
 iniciarJogo = do
     imagens <- carregarImagens
     play
-        (InWindow "Jogo de Xadrez" (larguraJanela, alturaJanela) (offset, offset))
+        (InWindow "Jogo de Xadrez" (600, 600) (10, 10))
         white
         30
         estadoInicial
@@ -81,13 +80,21 @@ desenharLinha imagens (y, linha) = map (desenharPeca imagens y) (zip [0 ..] linh
 -- Função para desenhar uma peça
 desenharPeca :: [(Peca, Picture)] -> Int -> (Int, Char) -> Picture
 desenharPeca imagens y (x, pecaChar) =
-    let cor = if even (x + y) then white else black
+    let squareSize = 75
+        boardOffsetX = 250 -- Adjusted to move board left
+        boardOffsetY = 250 -- Adjusted to move board down
+        pieceOffsetX = 10 -- Move pieces left within squares
+        pieceOffsetY = 10 -- Move pieces down within squares
+        cor = if even (x + y) then makeColor 0.47 0.58 0.34 1.0 else makeColor 0.92 0.93 0.82 1.0
         pecaPicture =
             if pecaChar == ' '
                 then Blank
                 else desenharPecaChar imagens (charToPeca pecaChar)
-     in Translate (fromIntegral x * 75 - 300) (fromIntegral y * 75 - 300) $
-            Pictures [Color cor (rectangleSolid 75 75), pecaPicture]
+     in Translate (fromIntegral x * squareSize - boardOffsetX) (fromIntegral (7 - y) * squareSize - boardOffsetY) $
+            Pictures
+                [ Color cor (rectangleSolid squareSize squareSize)
+                , Translate (squareSize / 2 - pieceOffsetX) (squareSize / 2 - pieceOffsetY) pecaPicture
+                ]
 
 -- Função para tratar eventos (a ser implementada)
 tratarEvento :: Event -> (Tabuleiro, Cor) -> (Tabuleiro, Cor)
