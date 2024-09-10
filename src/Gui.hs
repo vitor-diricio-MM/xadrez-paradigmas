@@ -140,7 +140,8 @@ tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Just
             let (pecaDestinoChar, _) = pecaNaPosicao destino tab
                 pecaCapturada = if pecaDestinoChar /= ' ' then Just (charToPeca pecaDestinoChar) else Nothing
                 novoTabuleiro = processarMovimento (posicaoParaString origem destino) tab cor
-             in case novoTabuleiro of
+                novoTabuleiroPromovido = promoverPeao novoTabuleiro destino cor
+             in case novoTabuleiroPromovido of
                     Just tabAtualizado ->
                         let (novasBrancas, novasPretas) = case pecaCapturada of
                                 Just p -> if corPeca p == Branca then (p : capturadasBrancas, capturadasPretas) else (capturadasBrancas, p : capturadasPretas)
@@ -157,6 +158,13 @@ tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Just
                     Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas, "Movimento inválido")
         Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas, "Movimento inválido")
 tratarEvento _ estado = estado
+
+promoverPeao :: Maybe Tabuleiro -> Posicao -> Cor -> Maybe Tabuleiro
+promoverPeao (Just tab) (x, y) cor
+    | (y == 0 && cor == Branca) || (y == 7 && cor == Preta) =
+        let linhaAtualizada = take x (tab !! y) ++ [if cor == Branca then 'Q' else 'q'] ++ drop (x + 1) (tab !! y)
+         in Just (take y tab ++ [linhaAtualizada] ++ drop (y + 1) tab)
+promoverPeao tab _ _ = tab
 
 atualizarEstado :: Float -> EstadoJogo -> EstadoJogo
 atualizarEstado _ estado = estado
