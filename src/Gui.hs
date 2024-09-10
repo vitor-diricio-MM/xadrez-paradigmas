@@ -1,6 +1,8 @@
 module Gui (iniciarJogo) where
 
-import Data.Maybe (fromMaybe, isJust)
+import Check (verificarXeque)
+import CheckMate (verificarXequeMate)
+import Data.Maybe (fromMaybe)
 import Graphics.Gloss
 import Graphics.Gloss.Data.Color ()
 import Graphics.Gloss.Interface.Pure.Game
@@ -10,10 +12,10 @@ import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao, tabule
 import Utils (charToPeca, corPeca)
 import ValidacaoMovimento (movimentoValido)
 
-type EstadoJogo = (Tabuleiro, Cor, Maybe Posicao, [Peca], [Peca])
+type EstadoJogo = (Tabuleiro, Cor, Maybe Posicao, [Peca], [Peca], String)
 
 estadoInicial :: EstadoJogo
-estadoInicial = (tabuleiroInicial, Branca, Nothing, [], [])
+estadoInicial = (tabuleiroInicial, Branca, Nothing, [], [], "Turno das brancas")
 
 carregarImagens :: IO [(Peca, Picture)]
 carregarImagens = do
@@ -69,10 +71,11 @@ iniciarJogo = do
         atualizarEstado
 
 desenharEstado :: [(Peca, Picture)] -> EstadoJogo -> Picture
-desenharEstado imagens (tab, cor, maybePos, capturadasBrancas, capturadasPretas) =
+desenharEstado imagens (tab, cor, maybePos, capturadasBrancas, capturadasPretas, mensagem) =
     Pictures $
         concatMap (desenharLinha imagens maybePos tab cor) (zip [0 ..] tab)
             ++ desenharCapturadas imagens capturadasBrancas capturadasPretas
+            ++ [Translate (-70) 350 $ Scale 0.15 0.15 $ Text mensagem]
 
 desenharLinha :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> Cor -> (Int, [Char]) -> [Picture]
 desenharLinha imagens maybePos tab cor (y, linha) = map (desenharPeca imagens maybePos tab cor y) (zip [0 ..] linha)
@@ -122,16 +125,16 @@ desenharCapturadas imagens capturadasBrancas capturadasPretas =
                ]
 
 tratarEvento :: Event -> EstadoJogo -> EstadoJogo
-tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Nothing, capturadasBrancas, capturadasPretas) =
+tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Nothing, capturadasBrancas, capturadasPretas, mensagem) =
     case mouseParaPosicao mousePos of
         Just pos ->
             let (pecaChar, _) = pecaNaPosicao pos tab
                 peca = if pecaChar /= ' ' then Just (charToPeca pecaChar) else Nothing
              in case peca of
-                    Just p -> if corPeca p == cor then (tab, cor, Just pos, capturadasBrancas, capturadasPretas) else (tab, cor, Nothing, capturadasBrancas, capturadasPretas)
-                    Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas)
-        Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas)
-tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Just origem, capturadasBrancas, capturadasPretas) =
+                    Just p -> if corPeca p == cor then (tab, cor, Just pos, capturadasBrancas, capturadasPretas, mensagem) else (tab, cor, Nothing, capturadasBrancas, capturadasPretas, mensagem)
+                    Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas, mensagem)
+        Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas, mensagem)
+tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Just origem, capturadasBrancas, capturadasPretas, _) =
     case mouseParaPosicao mousePos of
         Just destino ->
             let (pecaDestinoChar, _) = pecaNaPosicao destino tab
@@ -142,9 +145,17 @@ tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) (tab, cor, Just
                         let (novasBrancas, novasPretas) = case pecaCapturada of
                                 Just p -> if corPeca p == Branca then (p : capturadasBrancas, capturadasPretas) else (capturadasBrancas, p : capturadasPretas)
                                 Nothing -> (capturadasBrancas, capturadasPretas)
-                         in (tabAtualizado, alternarCor cor, Nothing, novasBrancas, novasPretas)
-                    Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas)
-        Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas)
+                            novoCor = alternarCor cor
+                            mensagem =
+                                if verificarXequeMate tabAtualizado novoCor
+                                    then "Cheque mate!"
+                                    else
+                                        if verificarXeque tabAtualizado novoCor
+                                            then "Cheque!"
+                                            else if novoCor == Branca then "Turno das brancas" else "Turno das pretas"
+                         in (tabAtualizado, novoCor, Nothing, novasBrancas, novasPretas, mensagem)
+                    Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas, "Movimento inválido")
+        Nothing -> (tab, cor, Nothing, capturadasBrancas, capturadasPretas, "Movimento inválido")
 tratarEvento _ estado = estado
 
 atualizarEstado :: Float -> EstadoJogo -> EstadoJogo
