@@ -2,8 +2,11 @@
 
 module Gui (iniciarJogo) where
 
+import AI (getBestMove)
 import Check (verificarXeque)
 import CheckMate (verificarXequeMate)
+import Control.Monad (when)
+import Data.Char (toLower)
 import Data.Maybe (fromMaybe)
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
@@ -33,7 +36,7 @@ estadoInicial =
   EstadoJogo
     { estadoAtual = Menu,
       tabuleiro = tabuleiroInicial,
-      corAtual = Branca,
+      corAtual = Preta,
       posicaoSelecionada = Nothing,
       capturadasBrancas = [],
       capturadasPretas = [],
@@ -100,7 +103,7 @@ desenharEstado imagens estado =
   case estadoAtual estado of
     Menu -> return $ desenharMenu estado
     Jogando -> return $ desenharJogo imagens estado
-    UmJogador -> return $ desenharUmJogador estado
+    UmJogador -> return $ desenharJogo imagens estado
     GameOver -> return $ desenharGameOver estado
 
 desenharMenu :: EstadoJogo -> Picture
@@ -120,13 +123,6 @@ desenharJogo imagens estadoJogo =
       ++ [Translate (-70) 350 $ Scale 0.15 0.15 $ Text (mensagem estadoJogo)]
       ++ desenharOpcoesPromocao imagens estadoJogo
 
-desenharUmJogador :: EstadoJogo -> Picture
-desenharUmJogador _ =
-  Pictures
-    [ Translate (-200) 50 $ Scale 0.2 0.2 $ Text "Modo 'Um jogador' ainda não implementado",
-      desenharBotao 0 (-100) "Voltar"
-    ]
-
 desenharGameOver :: EstadoJogo -> Picture
 desenharGameOver estado =
   Pictures
@@ -138,8 +134,8 @@ desenharBotao x y texto =
       larguraBotao = 300 -- Largura fixa
       alturaBotao = 45 -- Altura fixa
       larguraTexto = fromIntegral (length texto) * 30 * escala
-      xTexto = x - larguraTexto -- Centraliza o texto horizontalmente
-      yTexto = y - (30 * escala) -- Centraliza o texto verticalmente
+      xTexto = x - larguraTexto / 2
+      yTexto = y - (30 * escala) / 2
    in Pictures
         [ Translate x y $ Color (greyN 0.8) $ rectangleSolid larguraBotao alturaBotao,
           Translate xTexto yTexto $ Scale escala escala $ Color black $ Text texto
@@ -234,7 +230,7 @@ tratarEvento :: Event -> EstadoJogo -> IO EstadoJogo
 -- Eventos no estado de Menu
 tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJogo {estadoAtual = Menu}) =
   if botaoClicado 0 50 "Um jogador" mx my
-    then return $ estado {estadoAtual = UmJogador}
+    then return $ estado {estadoAtual = UmJogador, mensagem = "Turno das pretas"}
     else
       if botaoClicado 0 (-20) "Dois jogadores" mx my
         then return $ estado {estadoAtual = Jogando, mensagem = "Turno das brancas"}
@@ -247,8 +243,9 @@ tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJ
   if botaoClicado 0 (-100) "Voltar" mx my
     then return $ estado {estadoAtual = Menu}
     else return estado
--- Eventos no estado de Jogando
+-- Eventos no estado de Jogando ou UmJogador
 tratarEvento evento estado@(EstadoJogo {estadoAtual = Jogando}) = tratarEventoJogo evento estado
+tratarEvento evento estado@(EstadoJogo {estadoAtual = UmJogador}) = tratarEventoJogo evento estado
 -- Eventos no estado de GameOver (ignorar interações)
 tratarEvento _ estado@(EstadoJogo {estadoAtual = GameOver}) = return estado
 tratarEvento _ estado = return estado
@@ -298,7 +295,7 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
       return novoEstado
     Nothing -> return estado
 -- Seleção de peça
-tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Nothing, estadoAtual = Jogando}) =
+tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Nothing, estadoAtual = estadoAt}) =
   case mouseParaPosicao mousePos of
     Just pos ->
       let (pecaChar, _) = pecaNaPosicao pos (tabuleiro estado)
@@ -311,7 +308,7 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
             Nothing -> return estado
     Nothing -> return estado
 -- Movimentação de peça
-tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Just origem, estadoAtual = Jogando}) =
+tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Just origem, estadoAtual = estadoAt}) =
   case mouseParaPosicao mousePos of
     Just destino ->
       let (pecaDestinoChar, _) = pecaNaPosicao destino (tabuleiro estado)
@@ -339,16 +336,19 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                       novoCor = alternarCor (corAtual estado)
                       verificaCheckMate = verificarXequeMate tabAtualizado novoCor
                       verificaCheck = verificarXeque tabAtualizado novoCor
+                      novoEstadoBase =
+                        estado
+                          { tabuleiro = tabAtualizado,
+                            corAtual = novoCor,
+                            posicaoSelecionada = Nothing,
+                            capturadasBrancas = novasBrancas,
+                            capturadasPretas = novasPretas
+                          }
                       novoEstado =
                         if verificaCheckMate
                           then
-                            estado
-                              { tabuleiro = tabAtualizado,
-                                corAtual = novoCor,
-                                posicaoSelecionada = Nothing,
-                                capturadasBrancas = novasBrancas,
-                                capturadasPretas = novasPretas,
-                                estadoAtual = GameOver,
+                            novoEstadoBase
+                              { estadoAtual = GameOver,
                                 mensagem = "Cheque Mate",
                                 tempoFinalizacao = Just 0
                               }
@@ -357,19 +357,83 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                                   if verificaCheck
                                     then "Cheque!"
                                     else if novoCor == Branca then "Turno das brancas" else "Turno das pretas"
-                             in estado
-                                  { tabuleiro = tabAtualizado,
-                                    corAtual = novoCor,
-                                    posicaoSelecionada = Nothing,
-                                    capturadasBrancas = novasBrancas,
-                                    capturadasPretas = novasPretas,
-                                    mensagem = novaMensagem
+                             in novoEstadoBase
+                                  { mensagem = novaMensagem
                                   }
-                  return novoEstado
+                  -- If single player mode and game not over, trigger AI move
+                  if estadoAtual estado == UmJogador && not verificaCheckMate && novoCor == Preta
+                    then do
+                      -- Get AI's move
+                      aiMove <- getBestMove (tabuleiro novoEstado)
+                      case aiMove of
+                        Just mv -> do
+                          -- Parse the AI's move
+                          let movimentoAI = parseMove mv
+                          case movimentoAI of
+                            Just (origAI, destAI) -> do
+                              let movimentoStr = posicaoParaString origAI destAI
+                                  tabAI = processarMovimento movimentoStr (tabuleiro novoEstado) Preta
+                              case tabAI of
+                                Just tabNovaAI ->
+                                  -- Check for promotion, check, or checkmate after AI move
+                                  if peaoPrecisaPromocao tabNovaAI destAI Preta
+                                    then do
+                                      -- Update the state with AI's promotion
+                                      let estadoComPromocaoAI =
+                                            novoEstado
+                                              { tabuleiro = tabNovaAI,
+                                                estadoPromocao = Just (destAI, Preta),
+                                                mensagem = "Promova o peão das pretas"
+                                              }
+                                      return estadoComPromocaoAI
+                                    else do
+                                      let verificaCheckMateAI = verificarXequeMate tabNovaAI (alternarCor Preta)
+                                          verificaCheckAI = verificarXeque tabNovaAI (alternarCor Preta)
+                                          estadoFinalAI =
+                                            if verificaCheckMateAI
+                                              then
+                                                novoEstado
+                                                  { tabuleiro = tabNovaAI,
+                                                    estadoAtual = GameOver,
+                                                    mensagem = "Cheque Mate",
+                                                    tempoFinalizacao = Just 0
+                                                  }
+                                              else
+                                                let novaMensagemAI =
+                                                      if verificaCheckAI
+                                                        then "Cheque!"
+                                                        else "Turno das brancas"
+                                                 in novoEstado
+                                                      { tabuleiro = tabNovaAI,
+                                                        corAtual = alternarCor Preta,
+                                                        mensagem = novaMensagemAI
+                                                      }
+                                      return estadoFinalAI
+                                Nothing -> return novoEstado {mensagem = "Movimento AI inválido"}
+                            Nothing -> return novoEstado
+                        Nothing -> return novoEstado {mensagem = "AI não conseguiu encontrar um movimento"}
+                    else return novoEstado
             Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento inválido"}
     Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento inválido"}
 -- Ignorar outros eventos
 tratarEventoJogo _ estado = return estado
+
+-- Function to parse StockFish move to Origem and Destino
+parseMove :: String -> Maybe (Posicao, Posicao)
+parseMove mv =
+  if length mv < 4
+    then Nothing
+    else
+      let orig = (colToIndex (mv !! 0), rowToIndex (mv !! 1))
+          dest = (colToIndex (mv !! 2), rowToIndex (mv !! 3))
+       in Just (orig, dest)
+
+-- Helper functions to convert FEN-like notation to indices
+colToIndex :: Char -> Int
+colToIndex c = fromEnum (toLower c) - fromEnum 'a'
+
+rowToIndex :: Char -> Int
+rowToIndex c = 8 - (fromEnum c - fromEnum '0')
 
 promoverPeao :: Tabuleiro -> Posicao -> Peca -> Tabuleiro
 promoverPeao tab (x, y) peca =

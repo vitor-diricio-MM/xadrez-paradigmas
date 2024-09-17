@@ -28,30 +28,30 @@ library
       Tabuleiro
       Utils
       ValidacaoMovimento
+      AI
   other-modules:
-      Paths_xadrez_paradigmas
-  autogen-modules:
       Paths_xadrez_paradigmas
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , process
     , gloss
     , gloss-juicy
+    , random
   default-language: Haskell2010
 
 executable xadrez-paradigmas-exe
   main-is: Main.hs
   other-modules:
       Paths_xadrez_paradigmas
-  autogen-modules:
-      Paths_xadrez_paradigmas
   hs-source-dirs:
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , process
     , gloss
     , gloss-juicy
     , xadrez-paradigmas
@@ -62,13 +62,12 @@ test-suite xadrez-paradigmas-test
   main-is: Spec.hs
   other-modules:
       Paths_xadrez_paradigmas
-  autogen-modules:
-      Paths_xadrez_paradigmas
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , process
     , gloss
     , gloss-juicy
     , xadrez-paradigmas

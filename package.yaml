@@ -14,8 +14,10 @@ description: Please see the README on GitHub at <https://github.com/githubuser/x
 
 dependencies:
   - base >= 4.7 && < 5
+  - process
   - gloss
   - gloss-juicy
+  - random
 
 ghc-options:
   - -Wall
@@ -29,7 +31,33 @@ ghc-options:
   - -Wredundant-constraints
 
 library:
+  exposed-modules:
+    - Check
+    - CheckMate
+    - Gui
+    - ProcessarMovimento
+    - Tabuleiro
+    - Utils
+    - ValidacaoMovimento
+    - AI
   source-dirs: src
+  ghc-options:
+    - -Wall
+    - -Wcompat
+    - -Widentities
+    - -Wincomplete-record-updates
+    - -Wincomplete-uni-patterns
+    - -Wmissing-export-lists
+    - -Wmissing-home-modules
+    - -Wpartial-fields
+    - -Wredundant-constraints
+  build-depends:
+    - base >=4.7 && <5
+    - process
+    - gloss
+    - gloss-juicy
+    - random
+  default-language: Haskell2010
 
 executables:
   xadrez-paradigmas-exe:
@@ -39,7 +67,16 @@ executables:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
-    dependencies:
+      - -Wall
+      - -Wcompat
+      - -Widentities
+      - -Wincomplete-record-updates
+      - -Wincomplete-uni-patterns
+      - -Wmissing-export-lists
+      - -Wmissing-home-modules
+      - -Wpartial-fields
+      - -Wredundant-constraints
+    build-depends:
       - xadrez-paradigmas
 
 tests:
@@ -50,5 +87,14 @@ tests:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
-    dependencies:
+      - -Wall
+      - -Wcompat
+      - -Widentities
+      - -Wincomplete-record-updates
+      - -Wincomplete-uni-patterns
+      - -Wmissing-export-lists
+      - -Wmissing-home-modules
+      - -Wpartial-fields
+      - -Wredundant-constraints
+    build-depends:
       - xadrez-paradigmas
