@@ -103,7 +103,7 @@ desenharEstado imagens estado =
 desenharMenu :: EstadoJogo -> Picture
 desenharMenu _ =
   Pictures
-    [ Translate (-150) 150 $ Scale 0.3 0.3 $ Text "Bem-vindo ao Xadrez",
+    [ Translate (-150) 150 $ Scale 0.2 0.2 $ Text "Bem-vindo ao Xadrez",
       desenharBotao 0 50 "Um jogador",
       desenharBotao 0 (-20) "Dois jogadores",
       desenharBotao 0 (-90) "Sair"
@@ -121,18 +121,17 @@ desenharUmJogador :: EstadoJogo -> Picture
 desenharUmJogador _ =
   Pictures
     [ Translate (-200) 50 $ Scale 0.2 0.2 $ Text "Modo 'Um jogador' ainda não implementado",
-      desenharBotao (-100) (-100) "Voltar"
+      desenharBotao 0 (-100) "Voltar"
     ]
 
 desenharBotao :: Float -> Float -> String -> Picture
 desenharBotao x y texto =
-  let escala = 0.3
-      larguraTexto = fromIntegral (length texto) * 16 * escala
-      alturaTexto = 30 * escala
-      larguraBotao = larguraTexto + 200
-      alturaBotao = alturaTexto + 45
-      xTexto = x - larguraTexto / 2
-      yTexto = y - alturaTexto / 2
+  let escala = 0.2
+      larguraBotao = 300 -- Largura fixa
+      alturaBotao = 45 -- Altura fixa
+      larguraTexto = fromIntegral (length texto) * 30 * escala
+      xTexto = x - larguraTexto -- Centraliza o texto horizontalmente
+      yTexto = y - (30 * escala) -- Centraliza o texto verticalmente
    in Pictures
         [ Translate x y $ Color (greyN 0.8) $ rectangleSolid larguraBotao alturaBotao,
           Translate xTexto yTexto $ Scale escala escala $ Color black $ Text texto
@@ -222,21 +221,22 @@ desenharOpcoesPromocao imagens estado =
           ]
     Nothing -> []
 
+-- Função de Tratamento de Eventos Atualizada
 tratarEvento :: Event -> EstadoJogo -> IO EstadoJogo
 -- Eventos no estado de Menu
 tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJogo {estadoAtual = Menu}) =
-  if botaoClicado (-100) 50 "Um jogador" mx my
+  if botaoClicado 0 50 "Um jogador" mx my
     then return $ estado {estadoAtual = UmJogador}
     else
-      if botaoClicado (-100) (-20) "Dois jogadores" mx my
+      if botaoClicado 0 (-20) "Dois jogadores" mx my
         then return $ estado {estadoAtual = Jogando, mensagem = "Turno das brancas"}
         else
-          if botaoClicado (-100) (-90) "Sair" mx my
+          if botaoClicado 0 (-90) "Sair" mx my
             then exitSuccess -- Fecha o jogo
             else return estado
 -- Eventos no estado de Um Jogador
 tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJogo {estadoAtual = UmJogador}) =
-  if botaoClicado (-100) (-100) "Voltar" mx my
+  if botaoClicado 0 (-100) "Voltar" mx my
     then return $ estado {estadoAtual = Menu}
     else return estado
 -- Eventos no estado de Jogando
@@ -245,11 +245,8 @@ tratarEvento _ estado = return estado
 
 botaoClicado :: Float -> Float -> String -> Float -> Float -> Bool
 botaoClicado x y texto mx my =
-  let escala = 0.3
-      larguraTexto = fromIntegral (length texto) * 16 * escala
-      alturaTexto = 30.0 * escala
-      larguraBotao = larguraTexto + 20
-      alturaBotao = alturaTexto + 20
+  let larguraBotao = 200 -- Deve corresponder ao desenharBotao
+      alturaBotao = 45 -- Deve corresponder ao desenharBotao
       x1 = x - larguraBotao / 2
       x2 = x + larguraBotao / 2
       y1 = y - alturaBotao / 2
