@@ -1,19 +1,22 @@
+-- Gui.hs
+
 module Gui (iniciarJogo) where
 
 import Check (verificarXeque)
 import CheckMate (verificarXequeMate)
 import Data.Maybe (fromMaybe)
 import Graphics.Gloss
-import Graphics.Gloss.Data.Color ()
-import Graphics.Gloss.Interface.Pure.Game
+import Graphics.Gloss.Interface.IO.Game
 import Graphics.Gloss.Juicy (loadJuicy)
 import ProcessarMovimento (processarMovimento)
+import System.Exit (exitSuccess)
 import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao, tabuleiroInicial)
 import Utils (charToPeca, corPeca)
 import ValidacaoMovimento (movimentoValido)
 
 data EstadoJogo = EstadoJogo
-  { tabuleiro :: Tabuleiro,
+  { estadoAtual :: Estado,
+    tabuleiro :: Tabuleiro,
     corAtual :: Cor,
     posicaoSelecionada :: Maybe Posicao,
     capturadasBrancas :: [Peca],
@@ -22,15 +25,18 @@ data EstadoJogo = EstadoJogo
     estadoPromocao :: Maybe (Posicao, Cor) -- (Posição do peão para promover, Cor do peão)
   }
 
+data Estado = Menu | Jogando | UmJogador deriving (Eq)
+
 estadoInicial :: EstadoJogo
 estadoInicial =
   EstadoJogo
-    { tabuleiro = tabuleiroInicial,
+    { estadoAtual = Menu,
+      tabuleiro = tabuleiroInicial,
       corAtual = Branca,
       posicaoSelecionada = Nothing,
       capturadasBrancas = [],
       capturadasPretas = [],
-      mensagem = "Turno das brancas",
+      mensagem = "Bem-vindo ao Xadrez",
       estadoPromocao = Nothing
     }
 
@@ -78,7 +84,7 @@ desenharPecaChar imagens peca =
 iniciarJogo :: IO ()
 iniciarJogo = do
   imagens <- carregarImagens
-  play
+  playIO
     (InWindow "Jogo de Xadrez" (800, 600) (10, 10))
     white
     30
@@ -87,13 +93,50 @@ iniciarJogo = do
     tratarEvento
     atualizarEstado
 
-desenharEstado :: [(Peca, Picture)] -> EstadoJogo -> Picture
+desenharEstado :: [(Peca, Picture)] -> EstadoJogo -> IO Picture
 desenharEstado imagens estado =
+  case estadoAtual estado of
+    Menu -> return $ desenharMenu estado
+    Jogando -> return $ desenharJogo imagens estado
+    UmJogador -> return $ desenharUmJogador estado
+
+desenharMenu :: EstadoJogo -> Picture
+desenharMenu _ =
+  Pictures
+    [ Translate (-150) 150 $ Scale 0.3 0.3 $ Text "Bem-vindo ao Xadrez",
+      desenharBotao 0 50 "Um jogador",
+      desenharBotao 0 (-20) "Dois jogadores",
+      desenharBotao 0 (-90) "Sair"
+    ]
+
+desenharJogo :: [(Peca, Picture)] -> EstadoJogo -> Picture
+desenharJogo imagens estadoJogo =
   Pictures $
-    desenharTabuleiro imagens estado
-      ++ desenharCapturadas imagens (capturadasBrancas estado) (capturadasPretas estado)
-      ++ [Translate (-70) 350 $ Scale 0.15 0.15 $ Text (mensagem estado)]
-      ++ desenharOpcoesPromocao imagens estado
+    desenharTabuleiro imagens estadoJogo
+      ++ desenharCapturadas imagens (capturadasBrancas estadoJogo) (capturadasPretas estadoJogo)
+      ++ [Translate (-70) 350 $ Scale 0.15 0.15 $ Text (mensagem estadoJogo)]
+      ++ desenharOpcoesPromocao imagens estadoJogo
+
+desenharUmJogador :: EstadoJogo -> Picture
+desenharUmJogador _ =
+  Pictures
+    [ Translate (-200) 50 $ Scale 0.2 0.2 $ Text "Modo 'Um jogador' ainda não implementado",
+      desenharBotao (-100) (-100) "Voltar"
+    ]
+
+desenharBotao :: Float -> Float -> String -> Picture
+desenharBotao x y texto =
+  let escala = 0.3
+      larguraTexto = fromIntegral (length texto) * 16 * escala
+      alturaTexto = 30 * escala
+      larguraBotao = larguraTexto + 200
+      alturaBotao = alturaTexto + 45
+      xTexto = x - larguraTexto / 2
+      yTexto = y - alturaTexto / 2
+   in Pictures
+        [ Translate x y $ Color (greyN 0.8) $ rectangleSolid larguraBotao alturaBotao,
+          Translate xTexto yTexto $ Scale escala escala $ Color black $ Text texto
+        ]
 
 desenharTabuleiro :: [(Peca, Picture)] -> EstadoJogo -> [Picture]
 desenharTabuleiro imagens estado =
@@ -179,11 +222,45 @@ desenharOpcoesPromocao imagens estado =
           ]
     Nothing -> []
 
-tratarEvento :: Event -> EstadoJogo -> EstadoJogo
+tratarEvento :: Event -> EstadoJogo -> IO EstadoJogo
+-- Eventos no estado de Menu
+tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJogo {estadoAtual = Menu}) =
+  if botaoClicado (-100) 50 "Um jogador" mx my
+    then return $ estado {estadoAtual = UmJogador}
+    else
+      if botaoClicado (-100) (-20) "Dois jogadores" mx my
+        then return $ estado {estadoAtual = Jogando, mensagem = "Turno das brancas"}
+        else
+          if botaoClicado (-100) (-90) "Sair" mx my
+            then exitSuccess -- Fecha o jogo
+            else return estado
+-- Eventos no estado de Um Jogador
+tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJogo {estadoAtual = UmJogador}) =
+  if botaoClicado (-100) (-100) "Voltar" mx my
+    then return $ estado {estadoAtual = Menu}
+    else return estado
+-- Eventos no estado de Jogando
+tratarEvento evento estado@(EstadoJogo {estadoAtual = Jogando}) = tratarEventoJogo evento estado
+tratarEvento _ estado = return estado
+
+botaoClicado :: Float -> Float -> String -> Float -> Float -> Bool
+botaoClicado x y texto mx my =
+  let escala = 0.3
+      larguraTexto = fromIntegral (length texto) * 16 * escala
+      alturaTexto = 30.0 * escala
+      larguraBotao = larguraTexto + 20
+      alturaBotao = alturaTexto + 20
+      x1 = x - larguraBotao / 2
+      x2 = x + larguraBotao / 2
+      y1 = y - alturaBotao / 2
+      y2 = y + alturaBotao / 2
+   in mx >= x1 && mx <= x2 && my >= y1 && my <= y2
+
+tratarEventoJogo :: Event -> EstadoJogo -> IO EstadoJogo
 -- Evento de promoção pendente
-tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Just (posPeao, corPeao)}) =
+tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Just (posPeao, corPeao)}) =
   case identificarPromocao mousePos corPeao of
-    Just pecaEscolhida ->
+    Just pecaEscolhida -> do
       let novoTabuleiro = promoverPeao (tabuleiro estado) posPeao pecaEscolhida
           novoEstado =
             estado
@@ -199,9 +276,9 @@ tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJ
                           if alternarCor (corAtual estado) == Branca then "Turno das brancas" else "Turno das pretas",
                 corAtual = alternarCor (corAtual estado)
               }
-       in novoEstado
-    Nothing -> estado
-tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Nothing}) =
+      return novoEstado
+    Nothing -> return estado
+tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Nothing}) =
   case mouseParaPosicao mousePos of
     Just pos ->
       let (pecaChar, _) = pecaNaPosicao pos (tabuleiro estado)
@@ -209,11 +286,11 @@ tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJ
        in case peca of
             Just p ->
               if corPeca p == corAtual estado
-                then estado {posicaoSelecionada = Just pos}
-                else estado
-            Nothing -> estado
-    Nothing -> estado
-tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Just origem}) =
+                then return $ estado {posicaoSelecionada = Just pos}
+                else return estado
+            Nothing -> return estado
+    Nothing -> return estado
+tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Just origem}) =
   case mouseParaPosicao mousePos of
     Just destino ->
       let (pecaDestinoChar, _) = pecaNaPosicao destino (tabuleiro estado)
@@ -224,12 +301,13 @@ tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJ
               -- Verifica se o peão precisa ser promovido
               if peaoPrecisaPromocao tabAtualizado destino (corAtual estado)
                 then
-                  estado
-                    { tabuleiro = tabAtualizado,
-                      posicaoSelecionada = Nothing,
-                      estadoPromocao = Just (destino, corAtual estado)
-                    }
-                else
+                  return $
+                    estado
+                      { tabuleiro = tabAtualizado,
+                        posicaoSelecionada = Nothing,
+                        estadoPromocao = Just (destino, corAtual estado)
+                      }
+                else do
                   let (novasBrancas, novasPretas) = case pecaCapturada of
                         Just p ->
                           if corPeca p == Branca
@@ -244,17 +322,18 @@ tratarEvento (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJ
                             if verificarXeque tabAtualizado novoCor
                               then "Cheque!"
                               else if novoCor == Branca then "Turno das brancas" else "Turno das pretas"
-                   in estado
-                        { tabuleiro = tabAtualizado,
-                          corAtual = novoCor,
-                          posicaoSelecionada = Nothing,
-                          capturadasBrancas = novasBrancas,
-                          capturadasPretas = novasPretas,
-                          mensagem = novaMensagem
-                        }
-            Nothing -> estado {posicaoSelecionada = Nothing, mensagem = "Movimento inválido"}
-    Nothing -> estado {posicaoSelecionada = Nothing, mensagem = "Movimento inválido"}
-tratarEvento _ estado = estado
+                  return $
+                    estado
+                      { tabuleiro = tabAtualizado,
+                        corAtual = novoCor,
+                        posicaoSelecionada = Nothing,
+                        capturadasBrancas = novasBrancas,
+                        capturadasPretas = novasPretas,
+                        mensagem = novaMensagem
+                      }
+            Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento inválido"}
+    Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento inválido"}
+tratarEventoJogo _ estado = return estado
 
 promoverPeao :: Tabuleiro -> Posicao -> Peca -> Tabuleiro
 promoverPeao tab (x, y) peca =
@@ -292,8 +371,8 @@ peaoPrecisaPromocao tab (x, y) cor =
         Peao c -> (c == Branca && y == 0) || (c == Preta && y == 7)
         _ -> False
 
-atualizarEstado :: Float -> EstadoJogo -> EstadoJogo
-atualizarEstado _ estado = estado
+atualizarEstado :: Float -> EstadoJogo -> IO EstadoJogo
+atualizarEstado _ estado = return estado
 
 mouseParaPosicao :: (Float, Float) -> Maybe Posicao
 mouseParaPosicao (x, y) =
