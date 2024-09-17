@@ -22,10 +22,11 @@ data EstadoJogo = EstadoJogo
     capturadasBrancas :: [Peca],
     capturadasPretas :: [Peca],
     mensagem :: String,
-    estadoPromocao :: Maybe (Posicao, Cor) -- (Posição do peão para promover, Cor do peão)
+    estadoPromocao :: Maybe (Posicao, Cor), -- (Posição do peão para promover, Cor do peão)
+    tempoFinalizacao :: Maybe Float -- Tempo restante para fechar o jogo após cheque mate
   }
 
-data Estado = Menu | Jogando | UmJogador deriving (Eq)
+data Estado = Menu | Jogando | UmJogador | GameOver deriving (Eq)
 
 estadoInicial :: EstadoJogo
 estadoInicial =
@@ -37,7 +38,8 @@ estadoInicial =
       capturadasBrancas = [],
       capturadasPretas = [],
       mensagem = "Bem-vindo ao Xadrez",
-      estadoPromocao = Nothing
+      estadoPromocao = Nothing,
+      tempoFinalizacao = Nothing
     }
 
 carregarImagens :: IO [(Peca, Picture)]
@@ -99,6 +101,7 @@ desenharEstado imagens estado =
     Menu -> return $ desenharMenu estado
     Jogando -> return $ desenharJogo imagens estado
     UmJogador -> return $ desenharUmJogador estado
+    GameOver -> return $ desenharGameOver estado
 
 desenharMenu :: EstadoJogo -> Picture
 desenharMenu _ =
@@ -123,6 +126,11 @@ desenharUmJogador _ =
     [ Translate (-200) 50 $ Scale 0.2 0.2 $ Text "Modo 'Um jogador' ainda não implementado",
       desenharBotao 0 (-100) "Voltar"
     ]
+
+desenharGameOver :: EstadoJogo -> Picture
+desenharGameOver estado =
+  Pictures
+    [Translate (-150) 0 $ Scale 0.3 0.3 $ Color red $ Text "Cheque Mate"]
 
 desenharBotao :: Float -> Float -> String -> Picture
 desenharBotao x y texto =
@@ -241,11 +249,13 @@ tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJ
     else return estado
 -- Eventos no estado de Jogando
 tratarEvento evento estado@(EstadoJogo {estadoAtual = Jogando}) = tratarEventoJogo evento estado
+-- Eventos no estado de GameOver (ignorar interações)
+tratarEvento _ estado@(EstadoJogo {estadoAtual = GameOver}) = return estado
 tratarEvento _ estado = return estado
 
 botaoClicado :: Float -> Float -> String -> Float -> Float -> Bool
 botaoClicado x y texto mx my =
-  let larguraBotao = 200 -- Deve corresponder ao desenharBotao
+  let larguraBotao = 300 -- Deve corresponder ao desenharBotao
       alturaBotao = 45 -- Deve corresponder ao desenharBotao
       x1 = x - larguraBotao / 2
       x2 = x + larguraBotao / 2
@@ -255,27 +265,40 @@ botaoClicado x y texto mx my =
 
 tratarEventoJogo :: Event -> EstadoJogo -> IO EstadoJogo
 -- Evento de promoção pendente
-tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Just (posPeao, corPeao)}) =
+tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Just (posPeao, corPeao), estadoAtual = Jogando}) =
   case identificarPromocao mousePos corPeao of
     Just pecaEscolhida -> do
       let novoTabuleiro = promoverPeao (tabuleiro estado) posPeao pecaEscolhida
+          verificaCheckMate =
+            if verificarXequeMate novoTabuleiro (alternarCor corPeao)
+              then True
+              else False
           novoEstado =
-            estado
-              { tabuleiro = novoTabuleiro,
-                estadoPromocao = Nothing,
-                mensagem =
-                  if verificarXequeMate novoTabuleiro (alternarCor (corAtual estado))
-                    then "Cheque mate!"
-                    else
-                      if verificarXeque novoTabuleiro (alternarCor (corAtual estado))
+            if verificaCheckMate
+              then
+                estado
+                  { tabuleiro = novoTabuleiro,
+                    estadoPromocao = Nothing,
+                    estadoAtual = GameOver,
+                    mensagem = "Cheque Mate",
+                    tempoFinalizacao = Just 0
+                  }
+              else
+                let verificaXeque = verificarXeque novoTabuleiro (alternarCor corPeao)
+                    novaMensagem =
+                      if verificaXeque
                         then "Cheque!"
-                        else
-                          if alternarCor (corAtual estado) == Branca then "Turno das brancas" else "Turno das pretas",
-                corAtual = alternarCor (corAtual estado)
-              }
+                        else if alternarCor corPeao == Branca then "Turno das brancas" else "Turno das pretas"
+                 in estado
+                      { tabuleiro = novoTabuleiro,
+                        estadoPromocao = Nothing,
+                        mensagem = novaMensagem,
+                        corAtual = alternarCor corPeao
+                      }
       return novoEstado
     Nothing -> return estado
-tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Nothing}) =
+-- Seleção de peça
+tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Nothing, estadoAtual = Jogando}) =
   case mouseParaPosicao mousePos of
     Just pos ->
       let (pecaChar, _) = pecaNaPosicao pos (tabuleiro estado)
@@ -287,12 +310,14 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                 else return estado
             Nothing -> return estado
     Nothing -> return estado
-tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Just origem}) =
+-- Movimentação de peça
+tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Nothing, posicaoSelecionada = Just origem, estadoAtual = Jogando}) =
   case mouseParaPosicao mousePos of
     Just destino ->
       let (pecaDestinoChar, _) = pecaNaPosicao destino (tabuleiro estado)
           pecaCapturada = if pecaDestinoChar /= ' ' then Just (charToPeca pecaDestinoChar) else Nothing
-          novoTabuleiro = processarMovimento (posicaoParaString origem destino) (tabuleiro estado) (corAtual estado)
+          movimento = posicaoParaString origem destino
+          novoTabuleiro = processarMovimento movimento (tabuleiro estado) (corAtual estado)
        in case novoTabuleiro of
             Just tabAtualizado ->
               -- Verifica se o peão precisa ser promovido
@@ -312,24 +337,38 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                             else (capturadasBrancas estado, p : capturadasPretas estado)
                         Nothing -> (capturadasBrancas estado, capturadasPretas estado)
                       novoCor = alternarCor (corAtual estado)
-                      novaMensagem =
-                        if verificarXequeMate tabAtualizado novoCor
-                          then "Cheque mate!"
+                      verificaCheckMate = verificarXequeMate tabAtualizado novoCor
+                      verificaCheck = verificarXeque tabAtualizado novoCor
+                      novoEstado =
+                        if verificaCheckMate
+                          then
+                            estado
+                              { tabuleiro = tabAtualizado,
+                                corAtual = novoCor,
+                                posicaoSelecionada = Nothing,
+                                capturadasBrancas = novasBrancas,
+                                capturadasPretas = novasPretas,
+                                estadoAtual = GameOver,
+                                mensagem = "Cheque Mate",
+                                tempoFinalizacao = Just 0
+                              }
                           else
-                            if verificarXeque tabAtualizado novoCor
-                              then "Cheque!"
-                              else if novoCor == Branca then "Turno das brancas" else "Turno das pretas"
-                  return $
-                    estado
-                      { tabuleiro = tabAtualizado,
-                        corAtual = novoCor,
-                        posicaoSelecionada = Nothing,
-                        capturadasBrancas = novasBrancas,
-                        capturadasPretas = novasPretas,
-                        mensagem = novaMensagem
-                      }
+                            let novaMensagem =
+                                  if verificaCheck
+                                    then "Cheque!"
+                                    else if novoCor == Branca then "Turno das brancas" else "Turno das pretas"
+                             in estado
+                                  { tabuleiro = tabAtualizado,
+                                    corAtual = novoCor,
+                                    posicaoSelecionada = Nothing,
+                                    capturadasBrancas = novasBrancas,
+                                    capturadasPretas = novasPretas,
+                                    mensagem = novaMensagem
+                                  }
+                  return novoEstado
             Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento inválido"}
     Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento inválido"}
+-- Ignorar outros eventos
 tratarEventoJogo _ estado = return estado
 
 promoverPeao :: Tabuleiro -> Posicao -> Peca -> Tabuleiro
@@ -369,13 +408,23 @@ peaoPrecisaPromocao tab (x, y) cor =
         _ -> False
 
 atualizarEstado :: Float -> EstadoJogo -> IO EstadoJogo
-atualizarEstado _ estado = return estado
+atualizarEstado delta estado =
+  case estadoAtual estado of
+    GameOver ->
+      case tempoFinalizacao estado of
+        Just t ->
+          if t + delta >= 10
+            then exitSuccess
+            else return $ estado {tempoFinalizacao = Just (t + delta)}
+        Nothing -> return $ estado {tempoFinalizacao = Just delta}
+    _ -> return estado
 
 mouseParaPosicao :: (Float, Float) -> Maybe Posicao
 mouseParaPosicao (x, y) =
-  let pos = (floor ((x + 300) / 75), 7 - floor ((y + 300) / 75))
+  let posX = floor ((x + 300) / 75)
+      posY = 7 - floor ((y + 300) / 75)
    in if x >= -300 && x <= 300 && y >= -300 && y <= 300
-        then Just pos
+        then Just (posX, posY)
         else Nothing
 
 posicaoParaString :: Posicao -> Posicao -> String
