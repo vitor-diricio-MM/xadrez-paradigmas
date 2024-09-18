@@ -1,141 +1,97 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
--- AI.hs-- AI.hs
-
 module AI (getBestMove) where
 
-import Control.Exception (SomeException, catch)
-import Control.Monad (when)
-import Data.Char (toLower)
-import Data.List (intersperse, isInfixOf)
-import System.IO
-  ( Handle,
-    hClose,
-    hFlush,
-    hGetLine,
-    hIsEOF,
-    hPutStrLn,
-  )
-import System.Process
-  ( CreateProcess (std_err, std_in, std_out),
-    StdStream (CreatePipe),
-    createProcess,
-    proc,
-    terminateProcess,
-    waitForProcess,
-  )
-import Tabuleiro (Tabuleiro)
+import CheckMate (verificarXequeMate)
+import Data.List (maximumBy, minimumBy)
+import Data.Maybe (mapMaybe)
+import Data.Ord (comparing)
+import ProcessarMovimento (processarMovimento)
+import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao)
+import Utils (charToPeca, corPeca)
+import ValidacaoMovimento (movimentoValido)
 
--- Function to get the best move from StockFish given the current board
-getBestMove :: Tabuleiro -> IO (Maybe String)
-getBestMove tab = do
-  let fen = tabuleiroToFEN tab
-  -- Start StockFish process
-  (Just hin, Just hout, Just herr, ph) <-
-    createProcess
-      (proc "/opt/homebrew/bin/stockfish" [])
-        { std_in = CreatePipe,
-          std_out = CreatePipe,
-          std_err = CreatePipe
-        }
-  -- Make sure to close handles on exception
-  let cleanup = do
-        hClose hin
-        hClose hout
-        hClose herr
-        terminateProcess ph
-        waitForProcess ph
-  -- Use catch to handle any exceptions and ensure cleanup
-  catch
-    ( do
-        -- Initialize UCI
-        hPutStrLn hin "uci"
-        hFlush hin
-        waitForResponse hout "uciok"
+maxDepth :: Int
+maxDepth = 3 -- Profundidade do algoritmo MiniMax
 
-        -- Tell StockFish we are ready
-        hPutStrLn hin "isready"
-        hFlush hin
-        waitForResponse hout "readyok"
+type Score = Int
 
-        -- Set the position to the current FEN
-        hPutStrLn hin $ "position fen " ++ fen
-        hFlush hin
+infiniteScore :: Int
+infiniteScore = 100000
 
-        -- Start the search for best move with a reasonable depth
-        hPutStrLn hin "go depth 15"
-        hFlush hin
-
-        -- Wait for the best move
-        bestMoveLine <- getBestMoveLine hout
-
-        -- Close the input to let StockFish know we are done
-        hClose hin
-
-        -- Parse the best move
-        let bestMove = parseBestMove bestMoveLine
-
-        -- Cleanup
-        cleanup
-
-        return bestMove
-    )
-    ( \(e :: SomeException) -> do
-        -- In case of any exception, perform cleanup and return Nothing
-        cleanup
-        return Nothing
-    )
-
--- Function to wait for a specific response line (case-insensitive)
-waitForResponse :: Handle -> String -> IO ()
-waitForResponse hout expected = do
-  end <- hIsEOF hout
-  if end
-    then return ()
+getBestMove :: Tabuleiro -> Cor -> IO (Maybe String)
+getBestMove tab cor = do
+  let moves = generateAllMoves tab cor
+  if null moves
+    then return Nothing
     else do
-      line <- hGetLine hout
-      let lineLower = map toLower line
-          expectedLower = map toLower expected
-      when (expectedLower `notElem` [take (length expectedLower) lineLower]) $
-        waitForResponse hout expected
+      let scoredMoves = [(move, alphaBeta (makeMove tab move cor) (alternarCor cor) (maxDepth - 1) (-infiniteScore) infiniteScore) | move <- moves]
+          bestMove = maximumBy (comparing snd) scoredMoves
+      return (Just (fst bestMove))
 
--- Function to continuously read lines until "bestmove" is found (case-insensitive)
-getBestMoveLine :: Handle -> IO String
-getBestMoveLine hout = do
-  eof <- hIsEOF hout
-  if eof
-    then return ""
-    else do
-      line <- hGetLine hout
-      if "bestmove" `isInfixOf` (map toLower line)
-        then return line
-        else getBestMoveLine hout
+alphaBeta :: Tabuleiro -> Cor -> Int -> Score -> Score -> Score
+alphaBeta tab cor depth alpha beta
+  | depth == 0 || verificarXequeMate tab cor = evaluateBoard tab cor
+  | otherwise =
+      let moves = generateAllMoves tab cor
+       in if null moves
+            then evaluateBoard tab cor
+            else abSearch moves alpha beta
+  where
+    abSearch [] a b = a
+    abSearch (move : moves) a b
+      | a >= b = a
+      | otherwise =
+          let tabAfterMove = makeMove tab move cor
+              score = -alphaBeta tabAfterMove (alternarCor cor) (depth - 1) (-b) (-a)
+              a' = max a score
+           in abSearch moves a' b
 
--- Function to parse the best move from the "bestmove" line
-parseBestMove :: String -> Maybe String
-parseBestMove line =
-  case words line of
-    ["bestmove", mv] -> Just mv
-    _ -> Nothing
+generateAllMoves :: Tabuleiro -> Cor -> [String]
+generateAllMoves tab cor =
+  [ posicaoParaString (x1, y1) (x2, y2)
+    | x1 <- [0 .. 7],
+      y1 <- [0 .. 7],
+      x2 <- [0 .. 7],
+      y2 <- [0 .. 7],
+      let origem = (x1, y1),
+      let destino = (x2, y2),
+      let (charOrigem, _) = pecaNaPosicao origem tab,
+      charOrigem /= ' ',
+      corPeca (charToPeca charOrigem) == cor,
+      movimentoValido tab (charToPeca charOrigem) origem destino
+  ]
 
--- Function to convert the current board to FEN notation
-tabuleiroToFEN :: Tabuleiro -> String
-tabuleiroToFEN tab =
-  let rows = map rowToFEN tab
-      piecesFEN = concat $ intersperse "/" rows
-      -- Assuming it's Black's turn; adjust if necessary
-      activeColor = "b" -- AI is always playing Black
-      castling = "-" -- Castling not implemented
-      enPassant = "-" -- En passant not implemented
-      halfMove = "0" -- Not implemented
-      fullMove = "1" -- Not implemented
-   in unwords [piecesFEN, activeColor, castling, enPassant, halfMove, fullMove]
+makeMove :: Tabuleiro -> String -> Cor -> Tabuleiro
+makeMove tab move cor =
+  case processarMovimento move tab cor of
+    Just novoTab -> novoTab
+    Nothing -> tab
 
--- Helper function to convert a single row to FEN
-rowToFEN :: String -> String
-rowToFEN [] = ""
-rowToFEN (c : cs) =
-  let (empty, rest) = span (== ' ') (c : cs)
-   in if not (null empty)
-        then show (length empty) ++ rowToFEN rest
-        else c : rowToFEN cs
+evaluateBoard :: Tabuleiro -> Cor -> Score
+evaluateBoard tab cor =
+  let allPieces = [charToPeca c | c <- concat tab, c /= ' ']
+      myPieces = [p | p <- allPieces, corPeca p == cor]
+      opponentPieces = [p | p <- allPieces, corPeca p == alternarCor cor]
+      myScore = sum (map pieceValue myPieces)
+      opponentScore = sum (map pieceValue opponentPieces)
+   in myScore - opponentScore
+
+pieceValue :: Peca -> Int
+pieceValue (Peao _) = 10
+pieceValue (Cavalo _) = 30
+pieceValue (Bispo _) = 30
+pieceValue (Torre _) = 50
+pieceValue (Rainha _) = 90
+pieceValue (Rei _) = 900
+
+posicaoParaString :: Posicao -> Posicao -> String
+posicaoParaString (x1, y1) (x2, y2) = [indiceParaColuna x1, indiceParaLinha y1, indiceParaColuna x2, indiceParaLinha y2]
+
+indiceParaColuna :: Int -> Char
+indiceParaColuna i = toEnum (i + fromEnum 'a')
+
+indiceParaLinha :: Int -> Char
+indiceParaLinha i = toEnum (8 - i + fromEnum '0')
+
+alternarCor :: Cor -> Cor
+alternarCor Branca = Preta
+alternarCor Preta = Branca
