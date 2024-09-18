@@ -26,7 +26,7 @@ import Graphics.Gloss.Juicy (loadJuicy)
 import ProcessarMovimento (processarMovimento)
 import System.Exit (exitSuccess)
 import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao, tabuleiroInicial)
-import Utils (charToPeca, corPeca)
+import Utils (alternarCor, charToPeca, corPeca)
 import ValidacaoMovimento (movimentoValido)
 
 -- Aqui a gente define o estado do jogo, que guarda tudo que precisamos
@@ -535,8 +535,3 @@ indiceParaColuna i = toEnum (i + fromEnum 'a')
 -- Converte índice para linha
 indiceParaLinha :: Int -> Char
 indiceParaLinha i = toEnum (8 - i + fromEnum '0')
-
--- Alterna a cor do jogador
-alternarCor :: Cor -> Cor
-alternarCor Branca = Preta
-alternarCor Preta = Branca

@@ -4,6 +4,8 @@ module Utils
     pecaNaPosicao',
     charToPeca,
     corPeca,
+    alternarCor,
+    todasPecas,
   )
 where
 
@@ -49,3 +51,13 @@ corPeca (Torre cor) = cor
 corPeca (Bispo cor) = cor
 corPeca (Cavalo cor) = cor
 corPeca (Peao cor) = cor
+
+-- Alterna a cor do jogador
+alternarCor :: Cor -> Cor
+alternarCor Branca = Preta
+alternarCor Preta = Branca
+
+-- Retorna uma lista de todas as peças no tabuleiro com suas posições
+todasPecas :: Tabuleiro -> [(Posicao, Peca)]
+todasPecas tab =
+  [((x, y), charToPeca (tab !! y !! x)) | x <- [0 .. 7], y <- [0 .. 7], tab !! y !! x /= ' ']

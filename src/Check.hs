@@ -2,7 +2,7 @@ module Check (verificarXeque, verificarXequeAposMovimento) where
 
 import Data.List (find)
 import Tabuleiro (Cor, Peca (..), Posicao, Tabuleiro)
-import Utils (charToPeca, corPeca)
+import Utils (corPeca, todasPecas)
 import ValidacaoMovimento (movimentoValido)
 
 -- Verifica se uma posição está sob ataque por qualquer peça adversária
@@ -29,8 +29,3 @@ tipoPeca (Torre cor) = Torre cor
 tipoPeca (Bispo cor) = Bispo cor
 tipoPeca (Cavalo cor) = Cavalo cor
 tipoPeca (Peao cor) = Peao cor
-
--- Retorna uma lista de todas as peças no tabuleiro com suas posições
-todasPecas :: Tabuleiro -> [(Posicao, Peca)]
-todasPecas tab =
-  [((x, y), charToPeca (tab !! y !! x)) | x <- [0 .. 7], y <- [0 .. 7], tab !! y !! x /= ' ']

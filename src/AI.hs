@@ -6,7 +6,7 @@ import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import ProcessarMovimento (processarMovimento)
 import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao)
-import Utils (charToPeca, corPeca)
+import Utils (alternarCor, charToPeca, corPeca)
 import ValidacaoMovimento (movimentoValido)
 
 -- Profundidade máxima do algoritmo MiniMax
@@ -100,8 +100,3 @@ indiceParaColuna i = toEnum (i + fromEnum 'a')
 -- Converte índice para linha
 indiceParaLinha :: Int -> Char
 indiceParaLinha i = toEnum (8 - i + fromEnum '0')
-
--- Alterna a cor do jogador
-alternarCor :: Cor -> Cor
-alternarCor Branca = Preta
-alternarCor Preta = Branca
