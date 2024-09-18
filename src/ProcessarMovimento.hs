@@ -9,7 +9,7 @@ import Tabuleiro (Cor (..), Posicao, Tabuleiro)
 import Utils (colunaParaIndice, corPeca, linhaParaIndice, pecaNaPosicao')
 import ValidacaoMovimento (movimentoValido, roqueValido)
 
--- Funcao para Processar Movimento
+-- Processa um movimento dado em notação de string e atualiza o tabuleiro se for válido
 processarMovimento :: String -> Tabuleiro -> Cor -> Maybe Tabuleiro
 processarMovimento [c1, r1, c2, r2] tab corAtual = do
   let inicio = (colunaParaIndice c1, linhaParaIndice r1)
@@ -25,23 +25,25 @@ processarMovimento [c1, r1, c2, r2] tab corAtual = do
     else Nothing
 processarMovimento _ _ _ = Nothing
 
+-- Move uma peça de uma posição para outra no tabuleiro
 moverPeca :: Posicao -> Posicao -> Tabuleiro -> Tabuleiro
 moverPeca (x1, y1) (x2, y2) tab =
-  let -- Remover a peca da posicao inicial
+  let -- Remove a peça da posição inicial
       tabSemPecaInicial = atualizarTabuleiro tab (x1, y1) ' '
 
-      -- Colocar a peca na posicao final
+      -- Coloca a peça na posição final
       peca = tab !! y1 !! x1
       tabFinal = atualizarTabuleiro tabSemPecaInicial (x2, y2) peca
    in tabFinal
 
--- Funcao auxiliar para atualizar o tabuleiro em uma posicao especifica
+-- Atualiza o tabuleiro em uma posição específica
 atualizarTabuleiro :: Tabuleiro -> Posicao -> Char -> Tabuleiro
 atualizarTabuleiro tab (x, y) peca =
   let linha = tab !! y
       linhaAtualizada = take x linha ++ [peca] ++ drop (x + 1) linha
    in take y tab ++ [linhaAtualizada] ++ drop (y + 1) tab
 
+-- Executa o movimento de roque no tabuleiro
 executarRoque :: Posicao -> Posicao -> Tabuleiro -> Tabuleiro
 executarRoque (x1, y1) (x2, y2) tab
   | x2 == 6 =

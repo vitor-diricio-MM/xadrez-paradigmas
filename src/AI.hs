@@ -9,14 +9,17 @@ import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao)
 import Utils (charToPeca, corPeca)
 import ValidacaoMovimento (movimentoValido)
 
+-- Profundidade máxima do algoritmo MiniMax
 maxDepth :: Int
-maxDepth = 3 -- Profundidade do algoritmo MiniMax
+maxDepth = 3
 
 type Score = Int
 
+-- Valor de pontuação para representar o infinito
 infiniteScore :: Int
 infiniteScore = 100000
 
+-- Função principal para obter o melhor movimento para uma cor no tabuleiro
 getBestMove :: Tabuleiro -> Cor -> IO (Maybe String)
 getBestMove tab cor = do
   let moves = generateAllMoves tab cor
@@ -27,6 +30,7 @@ getBestMove tab cor = do
           bestMove = maximumBy (comparing snd) scoredMoves
       return (Just (fst bestMove))
 
+-- Implementação do algoritmo Alpha-Beta para avaliar movimentos
 alphaBeta :: Tabuleiro -> Cor -> Int -> Score -> Score -> Score
 alphaBeta tab cor depth alpha beta
   | depth == 0 || verificarXequeMate tab cor = evaluateBoard tab cor
@@ -45,6 +49,7 @@ alphaBeta tab cor depth alpha beta
               a' = max a score
            in abSearch moves a' b
 
+-- Gera todos os movimentos possíveis para uma cor no tabuleiro
 generateAllMoves :: Tabuleiro -> Cor -> [String]
 generateAllMoves tab cor =
   [ posicaoParaString (x1, y1) (x2, y2)
@@ -60,10 +65,12 @@ generateAllMoves tab cor =
       movimentoValido tab (charToPeca charOrigem) origem destino
   ]
 
+-- Aplica um movimento no tabuleiro
 makeMove :: Tabuleiro -> String -> Cor -> Tabuleiro
 makeMove tab move cor =
   fromMaybe tab (processarMovimento move tab cor)
 
+-- Avalia o tabuleiro e retorna uma pontuação
 evaluateBoard :: Tabuleiro -> Cor -> Score
 evaluateBoard tab cor =
   let allPieces = [charToPeca c | c <- concat tab, c /= ' ']
@@ -73,6 +80,7 @@ evaluateBoard tab cor =
       opponentScore = sum (map pieceValue opponentPieces)
    in myScore - opponentScore
 
+-- Atribui um valor a cada tipo de peça
 pieceValue :: Peca -> Int
 pieceValue (Peao _) = 10
 pieceValue (Cavalo _) = 30
@@ -81,15 +89,19 @@ pieceValue (Torre _) = 50
 pieceValue (Rainha _) = 90
 pieceValue (Rei _) = 900
 
+-- Converte uma posição em string
 posicaoParaString :: Posicao -> Posicao -> String
 posicaoParaString (x1, y1) (x2, y2) = [indiceParaColuna x1, indiceParaLinha y1, indiceParaColuna x2, indiceParaLinha y2]
 
+-- Converte índice para coluna
 indiceParaColuna :: Int -> Char
 indiceParaColuna i = toEnum (i + fromEnum 'a')
 
+-- Converte índice para linha
 indiceParaLinha :: Int -> Char
 indiceParaLinha i = toEnum (8 - i + fromEnum '0')
 
+-- Alterna a cor do jogador
 alternarCor :: Cor -> Cor
 alternarCor Branca = Preta
 alternarCor Preta = Branca

@@ -9,21 +9,22 @@ where
 
 import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro)
 
--- Funcoes de Conversao de Coordenadas
+-- Converte uma coluna em caractere para um índice numérico
 colunaParaIndice :: Char -> Int
 colunaParaIndice col = fromEnum col - fromEnum 'a'
 
+-- Converte uma linha em caractere para um índice numérico
 linhaParaIndice :: Char -> Int
 linhaParaIndice linha = 8 - (read [linha] :: Int)
 
--- Funcao para Obter Peca na Posicao
+-- Retorna a peça na posição especificada do tabuleiro, se houver
 pecaNaPosicao' :: Posicao -> Tabuleiro -> Maybe Peca
 pecaNaPosicao' (col, lin) tab =
   let linha = tab !! lin
       pecaChar = linha !! col
    in if pecaChar == ' ' then Nothing else Just (charToPeca pecaChar)
 
--- Funcao para converter Char para Peca
+-- Converte um caractere para o tipo de peça correspondente
 charToPeca :: Char -> Peca
 charToPeca 'R' = Torre Branca
 charToPeca 'N' = Cavalo Branca
@@ -40,7 +41,7 @@ charToPeca 'p' = Peao Preta
 charToPeca ' ' = error "Espaço vazio não deve ser convertido para peça"
 charToPeca _ = error "Caracter desconhecido"
 
--- Funcao para obter a cor de uma peca
+-- Retorna a cor de uma peça
 corPeca :: Peca -> Cor
 corPeca (Rei cor) = cor
 corPeca (Rainha cor) = cor

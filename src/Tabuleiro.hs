@@ -13,12 +13,16 @@ where
 import Control.Monad (forM_)
 import Data.Char (isLower, isUpper)
 
+-- Tipo que representa o tabuleiro como uma lista de listas de caracteres
 type Tabuleiro = [[Char]]
 
+-- Tipo que representa uma posição no tabuleiro
 type Posicao = (Int, Int)
 
+-- Cores possíveis para as peças
 data Cor = Branca | Preta deriving (Show, Eq)
 
+-- Tipos de peças que podem existir no tabuleiro
 data Peca
   = Rei Cor
   | Rainha Cor
@@ -28,6 +32,7 @@ data Peca
   | Peao Cor
   deriving (Eq, Show)
 
+-- Configuração inicial do tabuleiro de xadrez
 tabuleiroInicial :: Tabuleiro
 tabuleiroInicial =
   [ "rnbqkbnr",
@@ -40,7 +45,7 @@ tabuleiroInicial =
     "RNBQKBNR"
   ]
 
--- Funcao que sera utilizada para mostrar o tabuleiro na tela
+-- Função para imprimir o tabuleiro no console
 mostrarTabuleiro :: Tabuleiro -> IO ()
 mostrarTabuleiro tab = do
   putStrLn "   a b c d e f g h"
@@ -52,7 +57,7 @@ mostrarTabuleiro tab = do
   putStrLn "  -----------------"
   putStrLn "   a b c d e f g h"
 
--- Legenda com as pecas do jogo
+-- Exibe as legendas das peças para o jogador
 legendas :: IO ()
 legendas = do
   putStrLn "\nLegendas:"
@@ -64,14 +69,14 @@ legendas = do
   putStrLn "P/p - Peao (Pawn)"
   putStrLn "(Letras maiusculas: brancas, letras minusculas: pretas)"
 
--- Funcao para obter a peca em uma determinada posicao no tabuleiro
+-- Retorna a peça e sua cor em uma posição específica do tabuleiro
 pecaNaPosicao :: Posicao -> Tabuleiro -> (Char, Maybe Cor)
 pecaNaPosicao (col, lin) tab =
   let linha = tab !! lin
       peca = linha !! col
    in (peca, corPecaFromChar peca)
 
--- Funcao auxiliar para obter a cor de uma peca a partir do caractere
+-- Determina a cor de uma peça a partir do caractere
 corPecaFromChar :: Char -> Maybe Cor
 corPecaFromChar c
   | isUpper c = Just Branca

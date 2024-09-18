@@ -29,6 +29,7 @@ import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao, tabule
 import Utils (charToPeca, corPeca)
 import ValidacaoMovimento (movimentoValido)
 
+-- Aqui a gente define o estado do jogo, que guarda tudo que precisamos
 data EstadoJogo = EstadoJogo
   { estadoAtual :: Estado,
     tabuleiro :: Tabuleiro,
@@ -37,12 +38,14 @@ data EstadoJogo = EstadoJogo
     capturadasBrancas :: [Peca],
     capturadasPretas :: [Peca],
     mensagem :: String,
-    estadoPromocao :: Maybe (Posicao, Cor), -- (Posição do peão para promover, Cor do peão)
-    tempoFinalizacao :: Maybe Float -- Tempo restante para fechar o jogo após cheque mate
+    estadoPromocao :: Maybe (Posicao, Cor), -- Se um peão precisa ser promovido
+    tempoFinalizacao :: Maybe Float -- Tempo para fechar o jogo após cheque mate
   }
 
+-- Estados possíveis do jogo
 data Estado = Menu | Jogando | UmJogador | GameOver deriving (Eq)
 
+-- Estado inicial do jogo, começando no menu
 estadoInicial :: EstadoJogo
 estadoInicial =
   EstadoJogo
@@ -57,6 +60,7 @@ estadoInicial =
       tempoFinalizacao = Nothing
     }
 
+-- Carrega as imagens das peças
 carregarImagens :: IO [(Peca, Picture)]
 carregarImagens = do
   reiBranco <- carregarImagem "imagens/rei_branco.png"
@@ -86,11 +90,13 @@ carregarImagens = do
       (Peao Preta, peaoPreto)
     ]
 
+-- Carrega uma imagem de um arquivo
 carregarImagem :: FilePath -> IO Picture
 carregarImagem caminho = do
   maybeImg <- loadJuicy caminho
   return $ fromMaybe (error $ "Erro ao carregar imagem: " ++ caminho) maybeImg
 
+-- Desenha a peça correspondente ao caractere
 desenharPecaChar :: [(Peca, Picture)] -> Peca -> Picture
 desenharPecaChar imagens peca =
   let squareSize = 76
@@ -98,6 +104,7 @@ desenharPecaChar imagens peca =
       originalPicture = fromMaybe Blank (lookup peca imagens)
    in Scale scaleFactor scaleFactor originalPicture
 
+-- Função principal para iniciar o jogo
 iniciarJogo :: IO ()
 iniciarJogo = do
   imagens <- carregarImagens
@@ -110,6 +117,7 @@ iniciarJogo = do
     tratarEvento
     atualizarEstado
 
+-- Desenha o estado atual do jogo
 desenharEstado :: [(Peca, Picture)] -> EstadoJogo -> IO Picture
 desenharEstado imagens estado =
   case estadoAtual estado of
@@ -118,6 +126,7 @@ desenharEstado imagens estado =
     UmJogador -> return $ desenharJogo imagens estado
     GameOver -> return $ desenharGameOver estado
 
+-- Desenha o menu inicial
 desenharMenu :: EstadoJogo -> Picture
 desenharMenu _ =
   Pictures
@@ -127,6 +136,7 @@ desenharMenu _ =
       desenharBotao 0 (-90) "Sair"
     ]
 
+-- Desenha o tabuleiro e as peças capturadas
 desenharJogo :: [(Peca, Picture)] -> EstadoJogo -> Picture
 desenharJogo imagens estadoJogo =
   Pictures $
@@ -136,11 +146,13 @@ desenharJogo imagens estadoJogo =
       ++ desenharOpcoesPromocao imagens estadoJogo
       ++ [desenharBotao 0 (-350) "Voltar"]
 
+-- Desenha a tela de Game Over
 desenharGameOver :: EstadoJogo -> Picture
 desenharGameOver _ =
   Pictures
     [Translate (-150) 0 $ Scale 0.3 0.3 $ Color red $ Text "Cheque Mate"]
 
+-- Desenha um botão na tela
 desenharBotao :: Float -> Float -> String -> Picture
 desenharBotao x y texto =
   let escala = 0.2
@@ -154,13 +166,16 @@ desenharBotao x y texto =
           Translate xTexto yTexto $ Scale escala escala $ Color black $ Text texto
         ]
 
+-- Desenha o tabuleiro de xadrez
 desenharTabuleiro :: [(Peca, Picture)] -> EstadoJogo -> [Picture]
 desenharTabuleiro imagens estado =
   concatMap (desenharLinha imagens (posicaoSelecionada estado) (tabuleiro estado)) (zip [0 ..] (tabuleiro estado))
 
+-- Desenha uma linha do tabuleiro
 desenharLinha :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> (Int, [Char]) -> [Picture]
 desenharLinha imagens maybePos tab (y, linha) = zipWith (curry (desenharPeca imagens maybePos tab y)) [0 ..] linha
 
+-- Desenha uma peça no tabuleiro
 desenharPeca :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> Int -> (Int, Char) -> Picture
 desenharPeca imagens maybePos tab y (x, pecaChar) =
   let squareSize = 76
@@ -190,6 +205,7 @@ desenharPeca imagens maybePos tab y (x, pecaChar) =
             Translate (squareSize / 2 - pieceOffsetX) (squareSize / 2 - pieceOffsetY) pecaPicture
           ]
 
+-- Desenha as peças capturadas
 desenharCapturadas :: [(Peca, Picture)] -> [Peca] -> [Peca] -> [Picture]
 desenharCapturadas imagens brancasCapturadas pretasCapturadas =
   let squareSize :: Int
@@ -230,6 +246,7 @@ desenharCapturadas imagens brancasCapturadas pretasCapturadas =
         ]
    in capturadasBrancasPictures ++ capturadasPretasPictures
 
+-- Desenha as opções de promoção de peão
 desenharOpcoesPromocao :: [(Peca, Picture)] -> EstadoJogo -> [Picture]
 desenharOpcoesPromocao imagens estado =
   case estadoPromocao estado of
@@ -247,6 +264,7 @@ desenharOpcoesPromocao imagens estado =
           ]
     Nothing -> []
 
+-- Trata eventos do mouse e teclado
 tratarEvento :: Event -> EstadoJogo -> IO EstadoJogo
 tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJogo {estadoAtual = Menu})
   | botaoClicado 0 50 "Um jogador" mx my = return $ estadoInicial {estadoAtual = UmJogador, mensagem = "Turno das brancas"}
@@ -264,10 +282,12 @@ tratarEvento evento estado@(EstadoJogo {estadoAtual = UmJogador}) =
 tratarEvento _ estado@(EstadoJogo {estadoAtual = GameOver}) = return estado
 tratarEvento _ estado = return estado
 
+-- Verifica se o clique foi no botão "Voltar"
 isCliqueVoltar :: Event -> Bool
 isCliqueVoltar (EventKey (MouseButton LeftButton) Down _ (mx, my)) = botaoClicado 0 (-350) "Voltar" mx my
 isCliqueVoltar _ = False
 
+-- Verifica se um botão foi clicado
 botaoClicado :: Float -> Float -> String -> Float -> Float -> Bool
 botaoClicado x y _ mx my =
   let larguraBotao = 300
@@ -278,6 +298,7 @@ botaoClicado x y _ mx my =
       y2 = y + alturaBotao / 2
    in mx >= x1 && mx <= x2 && my >= y1 && my <= y2
 
+-- Trata eventos durante o jogo
 tratarEventoJogo :: Event -> EstadoJogo -> IO EstadoJogo
 tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(EstadoJogo {estadoPromocao = Just (posPeao, corPeao), estadoAtual = _}) =
   case identificarPromocao mousePos corPeao of
@@ -423,6 +444,7 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
     Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento invalido"}
 tratarEventoJogo _ estado = return estado
 
+-- Converte string de movimento para posições
 parseMove :: String -> Maybe (Posicao, Posicao)
 parseMove mv =
   if length mv < 4
@@ -432,18 +454,22 @@ parseMove mv =
           dest = (colToIndex (mv !! 2), rowToIndex (mv !! 3))
        in Just (orig, dest)
 
+-- Converte coluna para índice
 colToIndex :: Char -> Int
 colToIndex c = fromEnum (toLower c) - fromEnum 'a'
 
+-- Converte linha para índice
 rowToIndex :: Char -> Int
 rowToIndex c = 8 - (fromEnum c - fromEnum '0')
 
+-- Promove um peão para outra peça
 promoverPeao :: Tabuleiro -> Posicao -> Peca -> Tabuleiro
 promoverPeao tab (x, y) peca =
   let pecaChar = pecaParaChar peca
       linhaAtualizada = take x (tab !! y) ++ [pecaChar] ++ drop (x + 1) (tab !! y)
    in take y tab ++ [linhaAtualizada] ++ drop (y + 1) tab
 
+-- Converte peça para caractere
 pecaParaChar :: Peca -> Char
 pecaParaChar (Rainha Branca) = 'Q'
 pecaParaChar (Torre Branca) = 'R'
@@ -455,6 +481,7 @@ pecaParaChar (Bispo Preta) = 'b'
 pecaParaChar (Cavalo Preta) = 'n'
 pecaParaChar _ = ' '
 
+-- Identifica qual peça o peão deve ser promovido
 identificarPromocao :: (Float, Float) -> Cor -> Maybe Peca
 identificarPromocao (mouseX, mouseY) cor =
   let squareSize = 76
@@ -466,6 +493,7 @@ identificarPromocao (mouseX, mouseY) cor =
         then Just (pecasPromocao !! clickedIndex)
         else Nothing
 
+-- Verifica se um peão precisa ser promovido
 peaoPrecisaPromocao :: Tabuleiro -> Posicao -> Bool
 peaoPrecisaPromocao tab (x, y) =
   let pecaChar = (tab !! y) !! x
@@ -474,6 +502,7 @@ peaoPrecisaPromocao tab (x, y) =
         Peao c -> (c == Branca && y == 0) || (c == Preta && y == 7)
         _ -> False
 
+-- Atualiza o estado do jogo
 atualizarEstado :: Float -> EstadoJogo -> IO EstadoJogo
 atualizarEstado delta estado =
   case estadoAtual estado of
@@ -486,6 +515,7 @@ atualizarEstado delta estado =
         Nothing -> return $ estado {tempoFinalizacao = Just delta}
     _ -> return estado
 
+-- Converte posição do mouse para posição no tabuleiro
 mouseParaPosicao :: (Float, Float) -> Maybe Posicao
 mouseParaPosicao (x, y) =
   let posX = floor ((x + 300) / 75)
@@ -494,15 +524,19 @@ mouseParaPosicao (x, y) =
         then Just (posX, posY)
         else Nothing
 
+-- Converte posição para string
 posicaoParaString :: Posicao -> Posicao -> String
 posicaoParaString (x1, y1) (x2, y2) = [indiceParaColuna x1, indiceParaLinha y1, indiceParaColuna x2, indiceParaLinha y2]
 
+-- Converte índice para coluna
 indiceParaColuna :: Int -> Char
 indiceParaColuna i = toEnum (i + fromEnum 'a')
 
+-- Converte índice para linha
 indiceParaLinha :: Int -> Char
 indiceParaLinha i = toEnum (8 - i + fromEnum '0')
 
+-- Alterna a cor do jogador
 alternarCor :: Cor -> Cor
 alternarCor Branca = Preta
 alternarCor Preta = Branca
