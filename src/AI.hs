@@ -1,8 +1,8 @@
 module AI (getBestMove) where
 
 import CheckMate (verificarXequeMate)
-import Data.List (maximumBy, minimumBy)
-import Data.Maybe (mapMaybe)
+import Data.List (maximumBy)
+import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import ProcessarMovimento (processarMovimento)
 import Tabuleiro (Cor (..), Peca (..), Posicao, Tabuleiro, pecaNaPosicao)
@@ -36,7 +36,7 @@ alphaBeta tab cor depth alpha beta
             then evaluateBoard tab cor
             else abSearch moves alpha beta
   where
-    abSearch [] a b = a
+    abSearch [] a _ = a
     abSearch (move : moves) a b
       | a >= b = a
       | otherwise =
@@ -50,9 +50,9 @@ generateAllMoves tab cor =
   [ posicaoParaString (x1, y1) (x2, y2)
     | x1 <- [0 .. 7],
       y1 <- [0 .. 7],
+      let origem = (x1, y1),
       x2 <- [0 .. 7],
       y2 <- [0 .. 7],
-      let origem = (x1, y1),
       let destino = (x2, y2),
       let (charOrigem, _) = pecaNaPosicao origem tab,
       charOrigem /= ' ',
@@ -62,9 +62,7 @@ generateAllMoves tab cor =
 
 makeMove :: Tabuleiro -> String -> Cor -> Tabuleiro
 makeMove tab move cor =
-  case processarMovimento move tab cor of
-    Just novoTab -> novoTab
-    Nothing -> tab
+  fromMaybe tab (processarMovimento move tab cor)
 
 evaluateBoard :: Tabuleiro -> Cor -> Score
 evaluateBoard tab cor =

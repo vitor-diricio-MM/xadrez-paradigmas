@@ -134,10 +134,10 @@ desenharJogo imagens estadoJogo =
       ++ desenharCapturadas imagens (capturadasBrancas estadoJogo) (capturadasPretas estadoJogo)
       ++ [Translate (-70) 350 $ Scale 0.15 0.15 $ Text (mensagem estadoJogo)]
       ++ desenharOpcoesPromocao imagens estadoJogo
-      ++ [desenharBotao 0 (-420) "Voltar"]
+      ++ [desenharBotao 0 (-350) "Voltar"]
 
 desenharGameOver :: EstadoJogo -> Picture
-desenharGameOver estado =
+desenharGameOver _ =
   Pictures
     [Translate (-150) 0 $ Scale 0.3 0.3 $ Color red $ Text "Cheque Mate"]
 
@@ -156,13 +156,13 @@ desenharBotao x y texto =
 
 desenharTabuleiro :: [(Peca, Picture)] -> EstadoJogo -> [Picture]
 desenharTabuleiro imagens estado =
-  concatMap (desenharLinha imagens (posicaoSelecionada estado) (tabuleiro estado) (corAtual estado)) (zip [0 ..] (tabuleiro estado))
+  concatMap (desenharLinha imagens (posicaoSelecionada estado) (tabuleiro estado)) (zip [0 ..] (tabuleiro estado))
 
-desenharLinha :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> Cor -> (Int, [Char]) -> [Picture]
-desenharLinha imagens maybePos tab cor (y, linha) = map (desenharPeca imagens maybePos tab cor y) (zip [0 ..] linha)
+desenharLinha :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> (Int, [Char]) -> [Picture]
+desenharLinha imagens maybePos tab (y, linha) = map (desenharPeca imagens maybePos tab y) (zip [0 ..] linha)
 
-desenharPeca :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> Cor -> Int -> (Int, Char) -> Picture
-desenharPeca imagens maybePos tab cor y (x, pecaChar) =
+desenharPeca :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> Int -> (Int, Char) -> Picture
+desenharPeca imagens maybePos tab y (x, pecaChar) =
   let squareSize = 76
       boardOffsetX = 250
       boardOffsetY = 250
@@ -238,27 +238,27 @@ desenharOpcoesPromocao imagens estado =
 tratarEvento :: Event -> EstadoJogo -> IO EstadoJogo
 tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJogo {estadoAtual = Menu}) =
   if botaoClicado 0 50 "Um jogador" mx my
-    then return $ estado {estadoAtual = UmJogador, mensagem = "Turno das brancas"}
+    then return $ estadoInicial {estadoAtual = UmJogador, mensagem = "Turno das brancas"}
     else
       if botaoClicado 0 (-20) "Dois jogadores" mx my
-        then return $ estado {estadoAtual = Jogando, mensagem = "Turno das brancas"}
+        then return $ estadoInicial {estadoAtual = Jogando, mensagem = "Turno das brancas"}
         else
           if botaoClicado 0 (-90) "Sair" mx my
             then exitSuccess
             else return estado
 tratarEvento evento estado@(EstadoJogo {estadoAtual = Jogando}) =
   if isCliqueVoltar evento
-    then return $ estado {estadoAtual = Menu}
+    then return $ estadoInicial {estadoAtual = Menu}
     else tratarEventoJogo evento estado
 tratarEvento evento estado@(EstadoJogo {estadoAtual = UmJogador}) =
   if isCliqueVoltar evento
-    then return $ estado {estadoAtual = Menu}
+    then return $ estadoInicial {estadoAtual = Menu}
     else tratarEventoJogo evento estado
 tratarEvento _ estado@(EstadoJogo {estadoAtual = GameOver}) = return estado
 tratarEvento _ estado = return estado
 
 isCliqueVoltar :: Event -> Bool
-isCliqueVoltar (EventKey (MouseButton LeftButton) Down _ (mx, my)) = botaoClicado 0 (-420) "Voltar" mx my
+isCliqueVoltar (EventKey (MouseButton LeftButton) Down _ (mx, my)) = botaoClicado 0 (-350) "Voltar" mx my
 isCliqueVoltar _ = False
 
 botaoClicado :: Float -> Float -> String -> Float -> Float -> Bool
