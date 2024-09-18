@@ -39,7 +39,7 @@ data EstadoJogo = EstadoJogo
     capturadasPretas :: [Peca],
     mensagem :: String,
     estadoPromocao :: Maybe (Posicao, Cor), -- Se um peão precisa ser promovido
-    tempoFinalizacao :: Maybe Float -- Tempo para fechar o jogo após cheque mate
+    tempoFinalizacao :: Maybe Float -- Tempo para fechar o jogo após xeque mate
   }
 
 -- Estados possíveis do jogo
@@ -150,7 +150,7 @@ desenharJogo imagens estadoJogo =
 desenharGameOver :: EstadoJogo -> Picture
 desenharGameOver _ =
   Pictures
-    [Translate (-150) 0 $ Scale 0.3 0.3 $ Color red $ Text "Cheque Mate"]
+    [Translate (-150) 0 $ Scale 0.3 0.3 $ Color red $ Text "Xeque Mate"]
 
 -- Desenha um botão na tela
 desenharBotao :: Float -> Float -> String -> Picture
@@ -312,13 +312,13 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                   { tabuleiro = novoTabuleiro,
                     estadoPromocao = Nothing,
                     estadoAtual = GameOver,
-                    mensagem = "Cheque Mate",
+                    mensagem = "Xeque Mate",
                     tempoFinalizacao = Just 0
                   }
               else
                 let verificaXeque = verificarXeque novoTabuleiro (alternarCor corPeao)
                     novaMensagem
-                      | verificaXeque = "Cheque!"
+                      | verificaXeque = "Xeque!"
                       | alternarCor corPeao == Branca = "Turno das brancas"
                       | otherwise = "Turno das pretas"
                  in estado
@@ -381,12 +381,12 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                           then
                             novoEstadoBase
                               { estadoAtual = GameOver,
-                                mensagem = "Cheque Mate",
+                                mensagem = "Xeque Mate",
                                 tempoFinalizacao = Just 0
                               }
                           else
                             let novaMensagem
-                                  | verificaCheck = "Cheque!"
+                                  | verificaCheck = "Xeque!"
                                   | novoCor == Branca = "Turno das brancas"
                                   | otherwise = "Turno das pretas"
                              in novoEstadoBase
@@ -422,13 +422,13 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                                                 novoEstado
                                                   { tabuleiro = tabNovaAI,
                                                     estadoAtual = GameOver,
-                                                    mensagem = "Cheque Mate",
+                                                    mensagem = "Xeque Mate",
                                                     tempoFinalizacao = Just 0
                                                   }
                                               else
                                                 let novaMensagemAI =
                                                       if verificaCheckAI
-                                                        then "Cheque!"
+                                                        then "Xeque!"
                                                         else "Turno das brancas"
                                                  in novoEstado
                                                       { tabuleiro = tabNovaAI,
