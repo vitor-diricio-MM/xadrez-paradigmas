@@ -10,11 +10,21 @@ Participantes:
 - Joao Pedro Machado | 11201720180
 - Thiago Schwartz Machado | 11202130845
 
-## Planejamento de entregas
+Este projeto é uma evolução do jogo de xadrez em Haskell, agora com uma interface gráfica criada usando a biblioteca Gloss. O jogo permite partidas entre dois jogadores humanos ou contra uma inteligência artificial básica que performa movimentos bastante simplórios.
 
-- Primeira entrega: Jogo de Xadrez 100% funcional, com testes nao otimizados e ainda sem utilizar quickcheck
+## Funcionalidades
 
-- Segunda entrega: Jogo de xadrez 100% funcional com testes aprimorados e com GUI
+- Gerenciamento de cliques: Implementado tanto para interação com peças quanto com o menu.
+- Promoção de peões: Adicionada nesta entrega (através de um pop up que surge), completando as funcionalidades do jogo de xadrez. Na promoção de peões, o usuário escolhe a peça de promoção tanto para si quanto para a IA. Uma melhoria futura seria implementar uma lógica para que a IA escolha automaticamente a peça mais adequada para a promoção
+- Finalização do jogo após xeque mate: Exibe "Xeque Mate" por 10 segundos antes de fechar. Uma melhoria seria retornar ao menu em vez de fechar.
+- Histórico de peças eliminadas: Peças capturadas são exibidas ao redor do tabuleiro.
+
+## Dificuldades, destaques e surpresas
+
+- Interação drag and drop: Inicialmente queríamos que o movimento das peças fosse feito por drag and drop, mas tivemos extrema dificuldade e optamos pela implementação com 2 cliques
+- Gerenciamento de estados: Manter o estado do jogo atualizado de maneira otimizada foi confuso e complicado. Um destaque para a função tratarEventoJogo em Gui.hs, que poderia ser simplificada com Monads State, mas não conseguimos implementar a tempo.
+- Cliques no menu: Tivemos muitos problemas no design dos botões e na sua área de clique.
+- IA:A complexidade em desenvolver uma AI robusta resultou em movimentos simplórios, destacando a necessidade de aprimoramento futuro.
 
 ## Instalacao e usabilidade
 
@@ -24,18 +34,10 @@ Para rodar o codigo, basta clonar o repositorio e rodar
 stack run
 ```
 
-Ou para reduzir a quantidade de logs
-
-```bash
-stack run --silent
-```
-
 ## Como jogar
 
-1. Insira movimentos no formato "casaInicialCasaFinal" (ex: "e2e4").
+1. Selecione o estilo de jogo ("um jogador" ou "dois jogadores").
 
-2. Digite "sair" para encerrar o jogo ou jogue até o final da partida.
+2. Peças brancas começam
 
-## License
-
-[MIT](https://choosealicense.com/licenses/mit/)
+3. Clique na peça que deseja movimentar e depois na casa de destino
