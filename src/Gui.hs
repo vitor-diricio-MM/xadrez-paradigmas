@@ -159,7 +159,7 @@ desenharTabuleiro imagens estado =
   concatMap (desenharLinha imagens (posicaoSelecionada estado) (tabuleiro estado)) (zip [0 ..] (tabuleiro estado))
 
 desenharLinha :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> (Int, [Char]) -> [Picture]
-desenharLinha imagens maybePos tab (y, linha) = map (desenharPeca imagens maybePos tab y) (zip [0 ..] linha)
+desenharLinha imagens maybePos tab (y, linha) = zipWith (curry (desenharPeca imagens maybePos tab y)) [0 ..] linha
 
 desenharPeca :: [(Peca, Picture)] -> Maybe Posicao -> Tabuleiro -> Int -> (Int, Char) -> Picture
 desenharPeca imagens maybePos tab y (x, pecaChar) =
@@ -191,28 +191,40 @@ desenharPeca imagens maybePos tab y (x, pecaChar) =
           ]
 
 desenharCapturadas :: [(Peca, Picture)] -> [Peca] -> [Peca] -> [Picture]
-desenharCapturadas imagens capturadasBrancas capturadasPretas =
-  let squareSize = 76
+desenharCapturadas imagens brancasCapturadas pretasCapturadas =
+  let squareSize :: Int
+      squareSize = 76
+
+      offsetXBrancas :: Int
       offsetXBrancas = -350
+
+      offsetXPretas :: Int
       offsetXPretas = 350
+
+      offsetY :: Int
       offsetY = 250
+
+      piecesPerColumn :: Int
       piecesPerColumn = 6
-      spacing = squareSize * 1.2
+
+      spacing :: Float
+      spacing = fromIntegral squareSize * 1.2
+
       capturadasBrancasPictures =
         [ Translate
-            (offsetXBrancas - fromIntegral col * spacing)
-            (offsetY - fromIntegral row * spacing)
+            (fromIntegral offsetXBrancas - fromIntegral col * spacing)
+            (fromIntegral offsetY - fromIntegral row * spacing)
             $ desenharPecaChar imagens peca
-          | (index, peca) <- zip [0 ..] capturadasBrancas,
+          | (index, peca) <- zip [0 :: Int ..] brancasCapturadas,
             let row = index `mod` piecesPerColumn,
             let col = index `div` piecesPerColumn
         ]
       capturadasPretasPictures =
         [ Translate
-            (offsetXPretas + fromIntegral col * spacing)
-            (offsetY - fromIntegral row * spacing)
+            (fromIntegral offsetXPretas + fromIntegral col * spacing)
+            (fromIntegral offsetY - fromIntegral row * spacing)
             $ desenharPecaChar imagens peca
-          | (index, peca) <- zip [0 ..] capturadasPretas,
+          | (index, peca) <- zip [0 :: Int ..] pretasCapturadas,
             let row = index `mod` piecesPerColumn,
             let col = index `div` piecesPerColumn
         ]
@@ -224,28 +236,23 @@ desenharOpcoesPromocao imagens estado =
     Just (_, cor) ->
       let pecasPromocao = [Rainha cor, Torre cor, Bispo cor, Cavalo cor]
           squareSize = 76
-          startX = -squareSize * 2
+          startX = (-(squareSize * 2))
           startY = 0
        in [ Translate (startX + fromIntegral i * squareSize) startY $
               Pictures
                 [ Color (greyN 0.8) (rectangleSolid squareSize squareSize),
                   desenharPecaChar imagens peca
                 ]
-            | (i, peca) <- zip [0 ..] pecasPromocao
+            | (i, peca) <- zip [0 :: Int ..] pecasPromocao
           ]
     Nothing -> []
 
 tratarEvento :: Event -> EstadoJogo -> IO EstadoJogo
-tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJogo {estadoAtual = Menu}) =
-  if botaoClicado 0 50 "Um jogador" mx my
-    then return $ estadoInicial {estadoAtual = UmJogador, mensagem = "Turno das brancas"}
-    else
-      if botaoClicado 0 (-20) "Dois jogadores" mx my
-        then return $ estadoInicial {estadoAtual = Jogando, mensagem = "Turno das brancas"}
-        else
-          if botaoClicado 0 (-90) "Sair" mx my
-            then exitSuccess
-            else return estado
+tratarEvento (EventKey (MouseButton LeftButton) Down _ (mx, my)) estado@(EstadoJogo {estadoAtual = Menu})
+  | botaoClicado 0 50 "Um jogador" mx my = return $ estadoInicial {estadoAtual = UmJogador, mensagem = "Turno das brancas"}
+  | botaoClicado 0 (-20) "Dois jogadores" mx my = return $ estadoInicial {estadoAtual = Jogando, mensagem = "Turno das brancas"}
+  | botaoClicado 0 (-90) "Sair" mx my = exitSuccess
+  | otherwise = return estado
 tratarEvento evento estado@(EstadoJogo {estadoAtual = Jogando}) =
   if isCliqueVoltar evento
     then return $ estadoInicial {estadoAtual = Menu}
@@ -289,10 +296,10 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                   }
               else
                 let verificaXeque = verificarXeque novoTabuleiro (alternarCor corPeao)
-                    novaMensagem =
-                      if verificaXeque
-                        then "Cheque!"
-                        else if alternarCor corPeao == Branca then "Turno das brancas" else "Turno das pretas"
+                    novaMensagem
+                      | verificaXeque = "Cheque!"
+                      | alternarCor corPeao == Branca = "Turno das brancas"
+                      | otherwise = "Turno das pretas"
                  in estado
                       { tabuleiro = novoTabuleiro,
                         estadoPromocao = Nothing,
@@ -357,10 +364,10 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                                 tempoFinalizacao = Just 0
                               }
                           else
-                            let novaMensagem =
-                                  if verificaCheck
-                                    then "Cheque!"
-                                    else if novoCor == Branca then "Turno das brancas" else "Turno das pretas"
+                            let novaMensagem
+                                  | verificaCheck = "Cheque!"
+                                  | novoCor == Branca = "Turno das brancas"
+                                  | otherwise = "Turno das pretas"
                              in novoEstadoBase
                                   { mensagem = novaMensagem
                                   }
@@ -382,7 +389,7 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                                             novoEstado
                                               { tabuleiro = tabNovaAI,
                                                 estadoPromocao = Just (destAI, Preta),
-                                                mensagem = "Promova o peão das pretas"
+                                                mensagem = "Promova o peao das pretas"
                                               }
                                       return estadoComPromocaoAI
                                     else do
@@ -408,12 +415,12 @@ tratarEventoJogo (EventKey (MouseButton LeftButton) Down _ mousePos) estado@(Est
                                                         mensagem = novaMensagemAI
                                                       }
                                       return estadoFinalAI
-                                Nothing -> return novoEstado {mensagem = "Movimento AI inválido"}
+                                Nothing -> return novoEstado {mensagem = "Movimento AI invalido"}
                             Nothing -> return novoEstado
-                        Nothing -> return novoEstado {mensagem = "AI não conseguiu encontrar um movimento"}
+                        Nothing -> return novoEstado {mensagem = "AI nao conseguiu encontrar um movimento"}
                     else return novoEstado
-            Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento inválido"}
-    Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento inválido"}
+            Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento invalido"}
+    Nothing -> return $ estado {posicaoSelecionada = Nothing, mensagem = "Movimento invalido"}
 tratarEventoJogo _ estado = return estado
 
 parseMove :: String -> Maybe (Posicao, Posicao)
@@ -421,7 +428,7 @@ parseMove mv =
   if length mv < 4
     then Nothing
     else
-      let orig = (colToIndex (mv !! 0), rowToIndex (mv !! 1))
+      let orig = (colToIndex (head mv), rowToIndex (mv !! 1))
           dest = (colToIndex (mv !! 2), rowToIndex (mv !! 3))
        in Just (orig, dest)
 
@@ -451,7 +458,7 @@ pecaParaChar _ = ' '
 identificarPromocao :: (Float, Float) -> Cor -> Maybe Peca
 identificarPromocao (mouseX, mouseY) cor =
   let squareSize = 76
-      startX = -squareSize * 2
+      startX = (-(squareSize * 2))
       startY = 0
       pecasPromocao = [Rainha cor, Torre cor, Bispo cor, Cavalo cor]
       clickedIndex = floor ((mouseX - startX + squareSize / 2) / squareSize)
