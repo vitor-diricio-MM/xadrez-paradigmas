@@ -28,7 +28,7 @@ Este projeto é uma evolução do jogo de xadrez em Haskell, agora com uma inter
 
 ## Instalacao e usabilidade
 
-Para rodar o codigo, basta clonar o repositorio e rodar
+Para rodar o codigo, basta clonar o repositorio e rodar, dentro da pasta do projeto:
 
 ```bash
 stack run
